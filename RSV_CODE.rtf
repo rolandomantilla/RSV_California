@@ -1,0 +1,779 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2867
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fnil\fcharset0 Menlo-Regular;}
+{\colortbl;\red255\green255\blue255;\red120\green129\blue140;\red12\green14\blue18;\red224\green232\blue240;
+\red252\green99\blue95;\red253\green149\blue70;\red198\green146\blue255;\red150\green204\blue255;\red104\green177\blue255;
+}
+{\*\expandedcolortbl;;\cssrgb\c54510\c58039\c61961;\cssrgb\c5098\c6667\c9020;\cssrgb\c90196\c92941\c95294;
+\cssrgb\c100000\c48235\c44706;\cssrgb\c100000\c65098\c34118;\cssrgb\c82353\c65882\c100000;\cssrgb\c64706\c83922\c100000;\cssrgb\c47451\c75294\c100000;
+}
+\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\deftab720
+\pard\pardeftab720\partightenfactor0
+
+\f0\fs24 \cf2 \cb3 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 # ------------------------------------------------------------\cf4 \strokec4 \
+\cf2 \strokec2 # pyshp compatibility patch (ArcGIS 2.4.2 \uc0\u8596  pyshp 3.x)\cf4 \strokec4 \
+\cf2 \strokec2 # Ensures shapefile.Writer.field accepts both fieldType and field_type.\cf4 \strokec4 \
+\cf2 \strokec2 # ------------------------------------------------------------\cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf5 \strokec5 import\cf4 \strokec4  \cf6 \strokec6 shapefile\cf4 \strokec4 \
+\
+\cf5 \strokec5 if\cf4 \strokec4  \cf5 \strokec5 not\cf4 \strokec4  \cf7 \strokec7 hasattr\cf4 \strokec4 (\cf6 \strokec6 shapefile\cf4 \strokec4 .Writer, \cf8 \strokec8 "_field_original"\cf4 \strokec4 ):\
+    \cf6 \strokec6 shapefile\cf4 \strokec4 .Writer._field_original \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 shapefile\cf4 \strokec4 .Writer.field\
+\
+\cf5 \strokec5 def\cf4 \strokec4  \cf7 \strokec7 _field_compat\cf4 \strokec4 (self, \cf5 \strokec5 *\cf6 \strokec6 args\cf4 \strokec4 , \cf5 \strokec5 **\cf6 \strokec6 kwargs\cf4 \strokec4 ):\
+    \cf5 \strokec5 if\cf4 \strokec4  \cf8 \strokec8 "fieldType"\cf4 \strokec4  \cf5 \strokec5 in\cf4 \strokec4  \cf6 \strokec6 kwargs\cf4 \strokec4  \cf5 \strokec5 and\cf4 \strokec4  \cf8 \strokec8 "field_type"\cf4 \strokec4  \cf5 \strokec5 not\cf4 \strokec4  \cf5 \strokec5 in\cf4 \strokec4  \cf6 \strokec6 kwargs\cf4 \strokec4 :\
+        \cf6 \strokec6 kwargs\cf4 \strokec4 [\cf8 \strokec8 "field_type"\cf4 \strokec4 ] \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 kwargs\cf4 \strokec4 .\cf7 \strokec7 pop\cf4 \strokec4 (\cf8 \strokec8 "fieldType"\cf4 \strokec4 )\
+    \cf5 \strokec5 return\cf4 \strokec4  \cf6 \strokec6 shapefile\cf4 \strokec4 .Writer._field_original(self, \cf5 \strokec5 *\cf6 \strokec6 args\cf4 \strokec4 , \cf5 \strokec5 **\cf6 \strokec6 kwargs\cf4 \strokec4 )\
+\
+\pard\pardeftab720\partightenfactor0
+\cf6 \strokec6 shapefile\cf4 \strokec4 .Writer.field \cf5 \strokec5 =\cf4 \strokec4  \cf7 \strokec7 _field_compat\cf4 \strokec4 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # ============================================================\cf4 \strokec4 \
+\cf2 \strokec2 # California RSV Bio-Forecast (2026\'962027) Pipeline\cf4 \strokec4 \
+\cf2 \strokec2 # ============================================================\cf4 \strokec4 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \strokec5 import\cf4 \strokec4  \cf6 \strokec6 pandas\cf4 \strokec4  \cf5 \strokec5 as\cf4 \strokec4  \cf6 \strokec6 pd\cf4 \strokec4 \
+\cf5 \strokec5 import\cf4 \strokec4  numpy \cf5 \strokec5 as\cf4 \strokec4  \cf6 \strokec6 np\cf4 \strokec4 \
+\cf5 \strokec5 import\cf4 \strokec4  \cf6 \strokec6 matplotlib\cf4 \strokec4 .\cf6 \strokec6 pyplot\cf4 \strokec4  \cf5 \strokec5 as\cf4 \strokec4  \cf6 \strokec6 plt\cf4 \strokec4 \
+\cf5 \strokec5 from\cf4 \strokec4  \cf6 \strokec6 sklearn\cf4 \strokec4 .\cf6 \strokec6 ensemble\cf4 \strokec4  \cf5 \strokec5 import\cf4 \strokec4  \cf6 \strokec6 RandomForestRegressor\cf4 \strokec4 \
+\cf5 \strokec5 from\cf4 \strokec4  Bio \cf5 \strokec5 import\cf4 \strokec4  Entrez, SeqIO\
+\cf5 \strokec5 from\cf4 \strokec4  Bio.SeqUtils.ProtParam \cf5 \strokec5 import\cf4 \strokec4  ProteinAnalysis\
+\cf5 \strokec5 import\cf4 \strokec4  \cf6 \strokec6 random\cf4 \strokec4 \
+\cf5 \strokec5 import\cf4 \strokec4  \cf6 \strokec6 warnings\cf4 \strokec4 \
+\cf5 \strokec5 import\cf4 \strokec4  \cf6 \strokec6 os\cf4 \strokec4 \
+\cf5 \strokec5 import\cf4 \strokec4  \cf6 \strokec6 requests\cf4 \strokec4 \
+\
+\
+\pard\pardeftab720\partightenfactor0
+\cf6 \strokec6 warnings\cf4 \strokec4 .\cf7 \strokec7 filterwarnings\cf4 \strokec4 (\cf8 \strokec8 "ignore"\cf4 \strokec4 )\
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # ------------------------------------------------------------\cf4 \strokec4 \
+\cf2 \strokec2 # CONFIGURATION\cf4 \strokec4 \
+\cf2 \strokec2 # ------------------------------------------------------------\cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf9 \strokec9 ARCGIS_USERNAME\cf4 \strokec4  \cf5 \strokec5 =\cf4 \strokec4  \cf8 \strokec8 "YOUR_USER_NAME"\cf4 \strokec4   \cf2 \strokec2 # ArcGIS Online username\cf4 \strokec4 \
+\cf9 \strokec9 CDC_APP_TOKEN\cf4 \strokec4  \cf5 \strokec5 =\cf4 \strokec4  \cf8 \strokec8 "YOUR_CDC_APP_TOKE"\cf4 \strokec4   \cf2 \strokec2 # CDC Socrata App Token (ensure this is valid)\cf4 \strokec4 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \strokec5 def\cf4 \strokec4  \cf7 \strokec7 socrata_get\cf4 \strokec4 (\cf6 \strokec6 url\cf4 \strokec4 , \cf6 \strokec6 params\cf5 \strokec5 =\cf9 \strokec9 None\cf4 \strokec4 , \cf6 \strokec6 timeout\cf5 \strokec5 =\cf9 \strokec9 30\cf4 \strokec4 ):\
+   \
+    headers \cf5 \strokec5 =\cf4 \strokec4  \{\}\
+    \cf5 \strokec5 if\cf4 \strokec4  \cf9 \strokec9 CDC_APP_TOKEN\cf4 \strokec4 :\
+        headers[\cf8 \strokec8 "X-App-Token"\cf4 \strokec4 ] \cf5 \strokec5 =\cf4 \strokec4  \cf9 \strokec9 CDC_APP_TOKEN\cf4 \strokec4 \
+    r \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 requests\cf4 \strokec4 .\cf7 \strokec7 get\cf4 \strokec4 (\cf6 \strokec6 url\cf4 \strokec4 , \cf6 \strokec6 params\cf5 \strokec5 =\cf6 \strokec6 params\cf4 \strokec4  \cf5 \strokec5 or\cf4 \strokec4  \{\}, \cf6 \strokec6 headers\cf5 \strokec5 =\cf4 \strokec4 headers, \cf6 \strokec6 timeout\cf5 \strokec5 =\cf6 \strokec6 timeout\cf4 \strokec4 )\
+    r.\cf7 \strokec7 raise_for_status\cf4 \strokec4 ()\
+    \cf5 \strokec5 return\cf4 \strokec4  r.\cf7 \strokec7 json\cf4 \strokec4 ()\
+\
+\pard\pardeftab720\partightenfactor0
+\cf7 \strokec7 print\cf4 \strokec4 (\cf8 \strokec8 "CDC App Token set:"\cf4 \strokec4 , \cf6 \strokec6 bool\cf4 \strokec4 (\cf9 \strokec9 CDC_APP_TOKEN\cf4 \strokec4 ))\
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # ------------------------------------------------------------\cf4 \strokec4 \
+\cf2 \strokec2 # 1) SETUP: California Cities and County Mapping\cf4 \strokec4 \
+\cf2 \strokec2 # ------------------------------------------------------------\cf4 \strokec4 \
+cities \cf5 \strokec5 =\cf4 \strokec4  [\
+    \cf2 \strokec2 # North Coast & Mountains\cf4 \strokec4 \
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Crescent City"\cf4 \strokec4 ,    \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 41.75\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 124.20\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 2\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "North Coast"\cf4 \strokec4 ,    \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.3\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Eureka"\cf4 \strokec4 ,           \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 40.80\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 124.16\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 4\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "North Coast"\cf4 \strokec4 ,    \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.2\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Arcata"\cf4 \strokec4 ,           \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 40.86\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 124.08\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 4\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "North Coast"\cf4 \strokec4 ,    \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 0.9\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Truckee"\cf4 \strokec4 ,          \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 39.33\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 120.18\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 2\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Sierra Nevada"\cf4 \strokec4 ,  \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 0.9\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "South Lake Tahoe"\cf4 \strokec4 ,\cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 38.94\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 119.98\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 3\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Sierra Nevada"\cf4 \strokec4 ,  \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.0\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Mammoth Lakes"\cf4 \strokec4 ,    \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 37.65\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 118.97\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 2\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Sierra Nevada"\cf4 \strokec4 ,  \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 0.9\cf4 \strokec4 \},\
+\
+    \cf2 \strokec2 # Sacramento Valley\cf4 \strokec4 \
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Redding"\cf4 \strokec4 ,    \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 40.59\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 122.39\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 3\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "North Valley"\cf4 \strokec4 ,   \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.4\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Chico"\cf4 \strokec4 ,      \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 39.73\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 121.84\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 4\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "North Valley"\cf4 \strokec4 ,   \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.0\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Sacramento"\cf4 \strokec4 , \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 38.58\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 121.49\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 7\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Central Valley"\cf4 \strokec4 , \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.0\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Davis"\cf4 \strokec4 ,      \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 38.54\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 121.74\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 5\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Central Valley"\cf4 \strokec4 , \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 0.7\cf4 \strokec4 \},\
+\
+    \cf2 \strokec2 # Bay Area & North Bay\cf4 \strokec4 \
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "San Francisco"\cf4 \strokec4 , \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 37.77\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 122.42\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 10\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Bay Area"\cf4 \strokec4 ,  \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 0.9\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Oakland"\cf4 \strokec4 ,       \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 37.80\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 122.27\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 9\cf4 \strokec4 ,  \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Bay Area"\cf4 \strokec4 ,  \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.1\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "San Jose"\cf4 \strokec4 ,      \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 37.34\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 121.89\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 8\cf4 \strokec4 ,  \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Bay Area"\cf4 \strokec4 ,  \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 0.9\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Santa Rosa"\cf4 \strokec4 ,    \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 38.44\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 122.71\cf4 \strokec4 ,\cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 5\cf4 \strokec4 ,  \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "North Bay"\cf4 \strokec4 , \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.1\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Napa"\cf4 \strokec4 ,          \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 38.30\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 122.29\cf4 \strokec4 ,\cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 4\cf4 \strokec4 ,  \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "North Bay"\cf4 \strokec4 , \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.2\cf4 \strokec4 \},\
+\
+    \cf2 \strokec2 # San Joaquin Valley\cf4 \strokec4 \
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Stockton"\cf4 \strokec4 ,    \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 37.96\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 121.29\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 6\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Central Valley"\cf4 \strokec4 , \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.3\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Fresno"\cf4 \strokec4 ,      \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 36.74\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 119.79\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 6\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Central Valley"\cf4 \strokec4 , \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.4\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Visalia"\cf4 \strokec4 ,     \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 36.33\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 119.29\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 5\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Central Valley"\cf4 \strokec4 , \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.3\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Bakersfield"\cf4 \strokec4 , \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 35.37\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 119.02\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 6\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Central Valley"\cf4 \strokec4 , \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.4\cf4 \strokec4 \},\
+\
+    \cf2 \strokec2 # Central Coast\cf4 \strokec4 \
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Monterey"\cf4 \strokec4 ,        \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 36.60\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 121.89\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 5\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Central Coast"\cf4 \strokec4 , \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.1\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "San Luis Obispo"\cf4 \strokec4 ,\cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 35.28\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 120.66\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 4\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Central Coast"\cf4 \strokec4 , \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 0.9\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Santa Barbara"\cf4 \strokec4 ,   \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 34.42\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 119.70\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 6\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Central Coast"\cf4 \strokec4 , \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.1\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Santa Maria"\cf4 \strokec4 ,     \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 34.95\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 120.44\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 5\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Central Coast"\cf4 \strokec4 , \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.2\cf4 \strokec4 \},\
+\
+    \cf2 \strokec2 # Southern California (LA Basin, Orange County, San Diego)\cf4 \strokec4 \
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Los Angeles"\cf4 \strokec4 ,  \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 34.05\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 118.24\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 9\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "LA Basin"\cf4 \strokec4 ,      \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.0\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Long Beach"\cf4 \strokec4 ,   \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 33.77\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 118.19\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 9\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "LA Basin"\cf4 \strokec4 ,      \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.0\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Santa Monica"\cf4 \strokec4 , \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 34.02\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 118.49\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 9\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "LA Basin"\cf4 \strokec4 ,      \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 0.9\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Pasadena"\cf4 \strokec4 ,     \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 34.15\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 118.14\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 8\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "LA Basin"\cf4 \strokec4 ,      \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.0\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Lancaster"\cf4 \strokec4 ,    \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 34.69\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 118.15\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 5\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "High Desert/LA"\cf4 \strokec4 ,\cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.1\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Anaheim"\cf4 \strokec4 ,      \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 33.84\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 117.91\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 8\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Orange County"\cf4 \strokec4 , \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.0\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Irvine"\cf4 \strokec4 ,       \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 33.68\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 117.83\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 7\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Orange County"\cf4 \strokec4 , \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 0.8\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "San Diego"\cf4 \strokec4 ,    \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 32.72\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 117.16\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 8\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "San Diego"\cf4 \strokec4 ,     \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 0.9\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Oceanside"\cf4 \strokec4 ,    \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 33.20\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 117.38\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 6\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "San Diego"\cf4 \strokec4 ,     \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.1\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Chula Vista"\cf4 \strokec4 ,  \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 32.64\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 117.08\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 7\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "San Diego"\cf4 \strokec4 ,     \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.0\cf4 \strokec4 \},\
+\
+    \cf2 \strokec2 # Inland Empire & Deserts\cf4 \strokec4 \
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Riverside"\cf4 \strokec4 ,      \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 33.98\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 117.38\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 7\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Inland Empire"\cf4 \strokec4 ,\cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.1\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "San Bernardino"\cf4 \strokec4 , \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 34.11\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 117.29\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 7\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Inland Empire"\cf4 \strokec4 ,\cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.2\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Palm Springs"\cf4 \strokec4 ,   \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 33.83\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 116.55\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 4\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Low Desert"\cf4 \strokec4 ,   \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.8\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Indio"\cf4 \strokec4 ,          \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 33.72\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 116.22\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 4\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Low Desert"\cf4 \strokec4 ,   \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.4\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Barstow"\cf4 \strokec4 ,        \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 34.90\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 117.02\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 3\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "High Desert"\cf4 \strokec4 ,  \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.3\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Victorville"\cf4 \strokec4 ,    \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 34.54\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 117.29\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 5\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "High Desert"\cf4 \strokec4 ,  \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.2\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "El Centro"\cf4 \strokec4 ,      \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 32.79\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 115.56\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 4\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Imperial Valley"\cf4 \strokec4 ,\cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.3\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Needles"\cf4 \strokec4 ,        \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 34.85\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 114.61\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 2\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Mojave Desert"\cf4 \strokec4 , \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 1.4\cf4 \strokec4 \},\
+    \{\cf8 \strokec8 "City"\cf4 \strokec4 : \cf8 \strokec8 "Big Bear Lake"\cf4 \strokec4 ,  \cf8 \strokec8 "Lat"\cf4 \strokec4 : \cf9 \strokec9 34.24\cf4 \strokec4 , \cf8 \strokec8 "Lon"\cf4 \strokec4 : \cf5 \strokec5 -\cf9 \strokec9 116.91\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf9 \strokec9 2\cf4 \strokec4 , \cf8 \strokec8 "Zone"\cf4 \strokec4 : \cf8 \strokec8 "Mountain"\cf4 \strokec4 ,      \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf9 \strokec9 0.9\cf4 \strokec4 \},\
+]\
+\pard\pardeftab720\partightenfactor0
+\cf9 \strokec9 N_CITIES\cf4 \strokec4  \cf5 \strokec5 =\cf4 \strokec4  \cf7 \strokec7 len\cf4 \strokec4 (cities)\
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # Mapping from City to County (for joining county-level metrics)\cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf9 \strokec9 CITY_TO_COUNTY_CA\cf4 \strokec4  \cf5 \strokec5 =\cf4 \strokec4  \{\
+    \cf8 \strokec8 "Crescent City"\cf4 \strokec4 : \cf8 \strokec8 "Del Norte"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Eureka"\cf4 \strokec4 : \cf8 \strokec8 "Humboldt"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Arcata"\cf4 \strokec4 : \cf8 \strokec8 "Humboldt"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Truckee"\cf4 \strokec4 : \cf8 \strokec8 "Nevada"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "South Lake Tahoe"\cf4 \strokec4 : \cf8 \strokec8 "El Dorado"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Mammoth Lakes"\cf4 \strokec4 : \cf8 \strokec8 "Mono"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Redding"\cf4 \strokec4 : \cf8 \strokec8 "Shasta"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Chico"\cf4 \strokec4 : \cf8 \strokec8 "Butte"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Sacramento"\cf4 \strokec4 : \cf8 \strokec8 "Sacramento"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Davis"\cf4 \strokec4 : \cf8 \strokec8 "Yolo"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "San Francisco"\cf4 \strokec4 : \cf8 \strokec8 "San Francisco"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Oakland"\cf4 \strokec4 : \cf8 \strokec8 "Alameda"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "San Jose"\cf4 \strokec4 : \cf8 \strokec8 "Santa Clara"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Santa Rosa"\cf4 \strokec4 : \cf8 \strokec8 "Sonoma"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Napa"\cf4 \strokec4 : \cf8 \strokec8 "Napa"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Stockton"\cf4 \strokec4 : \cf8 \strokec8 "San Joaquin"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Fresno"\cf4 \strokec4 : \cf8 \strokec8 "Fresno"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Visalia"\cf4 \strokec4 : \cf8 \strokec8 "Tulare"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Bakersfield"\cf4 \strokec4 : \cf8 \strokec8 "Kern"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Monterey"\cf4 \strokec4 : \cf8 \strokec8 "Monterey"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "San Luis Obispo"\cf4 \strokec4 : \cf8 \strokec8 "San Luis Obispo"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Santa Barbara"\cf4 \strokec4 : \cf8 \strokec8 "Santa Barbara"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Santa Maria"\cf4 \strokec4 : \cf8 \strokec8 "Santa Barbara"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Los Angeles"\cf4 \strokec4 : \cf8 \strokec8 "Los Angeles"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Long Beach"\cf4 \strokec4 : \cf8 \strokec8 "Los Angeles"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Santa Monica"\cf4 \strokec4 : \cf8 \strokec8 "Los Angeles"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Pasadena"\cf4 \strokec4 : \cf8 \strokec8 "Los Angeles"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Lancaster"\cf4 \strokec4 : \cf8 \strokec8 "Los Angeles"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Anaheim"\cf4 \strokec4 : \cf8 \strokec8 "Orange"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Irvine"\cf4 \strokec4 : \cf8 \strokec8 "Orange"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "San Diego"\cf4 \strokec4 : \cf8 \strokec8 "San Diego"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Oceanside"\cf4 \strokec4 : \cf8 \strokec8 "San Diego"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Chula Vista"\cf4 \strokec4 : \cf8 \strokec8 "San Diego"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Riverside"\cf4 \strokec4 : \cf8 \strokec8 "Riverside"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "San Bernardino"\cf4 \strokec4 : \cf8 \strokec8 "San Bernardino"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Palm Springs"\cf4 \strokec4 : \cf8 \strokec8 "Riverside"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Indio"\cf4 \strokec4 : \cf8 \strokec8 "Riverside"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Barstow"\cf4 \strokec4 : \cf8 \strokec8 "San Bernardino"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Victorville"\cf4 \strokec4 : \cf8 \strokec8 "San Bernardino"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "El Centro"\cf4 \strokec4 : \cf8 \strokec8 "Imperial"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Needles"\cf4 \strokec4 : \cf8 \strokec8 "San Bernardino"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Big Bear Lake"\cf4 \strokec4 : \cf8 \strokec8 "San Bernardino"\cf4 \strokec4 ,\
+\}\
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # ------------------------------------------------------------\cf4 \strokec4 \
+\cf2 \strokec2 # 2) DATA FETCHERS: CDC PLACES (smoking) & COVID Vaccination (proxy for RSV vaccine acceptance)\cf4 \strokec4 \
+\cf2 \strokec2 # ------------------------------------------------------------\cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf9 \strokec9 PLACES_COUNTY_API\cf4 \strokec4  \cf5 \strokec5 =\cf4 \strokec4  \cf8 \strokec8 "https://data.cdc.gov/resource/swc5-untb.json"\cf4 \strokec4   \cf2 \strokec2 # CDC PLACES county-level data\cf4 \strokec4 \
+\
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \strokec5 def\cf4 \strokec4  \cf7 \strokec7 fetch_county_smoking_rates_ca\cf4 \strokec4 (\cf6 \strokec6 measureid\cf5 \strokec5 =\cf8 \strokec8 "CSMOKING"\cf4 \strokec4 , \cf6 \strokec6 data_value_type\cf5 \strokec5 =\cf8 \strokec8 "Age-adjusted prevalence"\cf4 \strokec4 ):\
+    url \cf5 \strokec5 =\cf4 \strokec4  \cf8 \strokec8 "https://data.cdc.gov/resource/swc5-untb.json"\cf4 \strokec4 \
+    params \cf5 \strokec5 =\cf4 \strokec4  \{\
+        \cf8 \strokec8 "stateabbr"\cf4 \strokec4 : \cf8 \strokec8 "CA"\cf4 \strokec4 ,\
+        \cf8 \strokec8 "measureid"\cf4 \strokec4 : \cf6 \strokec6 measureid\cf4 \strokec4 ,\
+        \cf8 \strokec8 "data_value_type"\cf4 \strokec4 : \cf6 \strokec6 data_value_type\cf4 \strokec4 ,\
+        \cf8 \strokec8 "$select"\cf4 \strokec4 : \cf8 \strokec8 "locationname, data_value, data_value_type, year"\cf4 \strokec4 ,\
+        \cf8 \strokec8 "$limit"\cf4 \strokec4 : \cf9 \strokec9 5000\cf4 \strokec4 \
+    \}\
+    headers \cf5 \strokec5 =\cf4 \strokec4  \{\cf8 \strokec8 "X-App-Token"\cf4 \strokec4 : \cf9 \strokec9 CDC_APP_TOKEN\cf4 \strokec4 \}\
+    response \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 requests\cf4 \strokec4 .\cf7 \strokec7 get\cf4 \strokec4 (url, \cf6 \strokec6 params\cf5 \strokec5 =\cf4 \strokec4 params, \cf6 \strokec6 headers\cf5 \strokec5 =\cf4 \strokec4 headers)\
+    response.\cf7 \strokec7 raise_for_status\cf4 \strokec4 ()\
+    rows \cf5 \strokec5 =\cf4 \strokec4  response.\cf7 \strokec7 json\cf4 \strokec4 ()\
+    \cf7 \strokec7 print\cf4 \strokec4 (\cf5 \strokec5 f\cf8 \strokec8 "Retrieved \cf5 \strokec5 \{\cf7 \strokec7 len\cf4 \strokec4 (rows)\cf5 \strokec5 \}\cf8 \strokec8  smoking records."\cf4 \strokec4 )\
+    latest \cf5 \strokec5 =\cf4 \strokec4  \{\}\
+    \cf5 \strokec5 for\cf4 \strokec4  r \cf5 \strokec5 in\cf4 \strokec4  rows:\
+        county \cf5 \strokec5 =\cf4 \strokec4  r.get(\cf8 \strokec8 "locationname"\cf4 \strokec4 )\
+        val \cf5 \strokec5 =\cf4 \strokec4  r.get(\cf8 \strokec8 "data_value"\cf4 \strokec4 )\
+        year \cf5 \strokec5 =\cf4 \strokec4  r.get(\cf8 \strokec8 "year"\cf4 \strokec4 )\
+        \cf5 \strokec5 if\cf4 \strokec4  county \cf5 \strokec5 and\cf4 \strokec4  val \cf5 \strokec5 and\cf4 \strokec4  year:\
+            \cf5 \strokec5 try\cf4 \strokec4 :\
+                y \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 int\cf4 \strokec4 (\cf6 \strokec6 str\cf4 \strokec4 (year))\
+                v \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 float\cf4 \strokec4 (val)\
+                prev \cf5 \strokec5 =\cf4 \strokec4  latest.\cf7 \strokec7 get\cf4 \strokec4 (county)\
+                \cf5 \strokec5 if\cf4 \strokec4  prev \cf5 \strokec5 is\cf4 \strokec4  \cf9 \strokec9 None\cf4 \strokec4  \cf5 \strokec5 or\cf4 \strokec4  y \cf5 \strokec5 >=\cf4 \strokec4  prev[\cf9 \strokec9 1\cf4 \strokec4 ]:\
+                    latest[county] \cf5 \strokec5 =\cf4 \strokec4  (v, y)\
+            \cf5 \strokec5 except\cf4 \strokec4 :\
+                \cf5 \strokec5 continue\cf4 \strokec4 \
+    \cf5 \strokec5 return\cf4 \strokec4  \{k: v[\cf9 \strokec9 0\cf4 \strokec4 ] \cf5 \strokec5 for\cf4 \strokec4  k, v \cf5 \strokec5 in\cf4 \strokec4  latest.\cf7 \strokec7 items\cf4 \strokec4 ()\}\
+\
+\
+\pard\pardeftab720\partightenfactor0
+\cf9 \strokec9 OVID_COUNTY_API\cf4 \strokec4  \cf5 \strokec5 =\cf4 \strokec4  \cf8 \strokec8 "https://data.cdc.gov/resource/8xkx-amqh.json"\cf4 \strokec4   \
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \strokec5 def\cf4 \strokec4  \cf7 \strokec7 fetch_county_vax_rate_covid_ca\cf4 \strokec4 (\
+    \cf6 \strokec6 metric\cf5 \strokec5 =\cf8 \strokec8 "series_complete_pop_pct"\cf4 \strokec4 ,\
+    \cf6 \strokec6 app_token\cf5 \strokec5 =\cf9 \strokec9 None\cf4 \strokec4 ,\
+    \cf6 \strokec6 limit\cf5 \strokec5 =\cf9 \strokec9 20000\cf4 \strokec4 \
+):\
+    \cf8 \strokec8 """"\cf4 \strokec4 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf8 \strokec8     Notes:\cf4 \strokec4 \
+\cf8 \strokec8     - CDC county strings often look like "Los Angeles County" -> we normalize to "Los Angeles"\cf4 \strokec4 \
+\cf8 \strokec8     - We skip 'Unknown', 'Out of State', etc.\cf4 \strokec4 \
+\cf8 \strokec8     """\cf4 \strokec4 \
+    headers \cf5 \strokec5 =\cf4 \strokec4  \{\}\
+    \cf5 \strokec5 if\cf4 \strokec4  \cf6 \strokec6 app_token\cf4 \strokec4 :\
+        headers[\cf8 \strokec8 "X-App-Token"\cf4 \strokec4 ] \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 app_token\cf4 \strokec4 \
+\
+    params \cf5 \strokec5 =\cf4 \strokec4  \{\
+        \cf2 \strokec2 # Filter to CA and drop junk counties\cf4 \strokec4 \
+        \cf8 \strokec8 "$where"\cf4 \strokec4 : (\
+            \cf8 \strokec8 "recip_state='CA' "\cf4 \strokec4 \
+            \cf8 \strokec8 "AND recip_county IS NOT NULL "\cf4 \strokec4 \
+            \cf8 \strokec8 "AND recip_county NOT IN ('Unknown','Out of State','Federal Entities','Tribal Entity','Long Term Care')"\cf4 \strokec4 \
+        ),\
+        \cf8 \strokec8 "$select"\cf4 \strokec4 : \cf5 \strokec5 f\cf8 \strokec8 "recip_county, date, \cf5 \strokec5 \{\cf6 \strokec6 metric\cf5 \strokec5 \}\cf8 \strokec8 "\cf4 \strokec4 ,\
+        \cf8 \strokec8 "$order"\cf4 \strokec4 : \cf8 \strokec8 "date DESC"\cf4 \strokec4 ,\
+        \cf8 \strokec8 "$limit"\cf4 \strokec4 : \cf6 \strokec6 limit\cf4 \strokec4 \
+    \}\
+\
+    r \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 requests\cf4 \strokec4 .\cf7 \strokec7 get\cf4 \strokec4 (\cf9 \strokec9 COVID_COUNTY_API\cf4 \strokec4 , \cf6 \strokec6 params\cf5 \strokec5 =\cf4 \strokec4 params, \cf6 \strokec6 headers\cf5 \strokec5 =\cf4 \strokec4 headers, \cf6 \strokec6 timeout\cf5 \strokec5 =\cf9 \strokec9 60\cf4 \strokec4 )\
+    r.\cf7 \strokec7 raise_for_status\cf4 \strokec4 ()\
+    rows \cf5 \strokec5 =\cf4 \strokec4  r.\cf7 \strokec7 json\cf4 \strokec4 ()\
+\
+    latest \cf5 \strokec5 =\cf4 \strokec4  \{\}\
+    \cf5 \strokec5 for\cf4 \strokec4  rec \cf5 \strokec5 in\cf4 \strokec4  rows:\
+        county_raw \cf5 \strokec5 =\cf4 \strokec4  rec.get(\cf8 \strokec8 "recip_county"\cf4 \strokec4 )\
+        pct \cf5 \strokec5 =\cf4 \strokec4  rec.get(\cf6 \strokec6 metric\cf4 \strokec4 )\
+        dt \cf5 \strokec5 =\cf4 \strokec4  rec.get(\cf8 \strokec8 "date"\cf4 \strokec4 )\
+\
+        \cf5 \strokec5 if\cf4 \strokec4  \cf5 \strokec5 not\cf4 \strokec4  county_raw \cf5 \strokec5 or\cf4 \strokec4  pct \cf5 \strokec5 in\cf4 \strokec4  (\cf9 \strokec9 None\cf4 \strokec4 , \cf8 \strokec8 ""\cf4 \strokec4 , \cf8 \strokec8 "NA"\cf4 \strokec4 ) \cf5 \strokec5 or\cf4 \strokec4  \cf5 \strokec5 not\cf4 \strokec4  dt:\
+            \cf5 \strokec5 continue\cf4 \strokec4 \
+\
+        \cf2 \strokec2 # normalize county name so it matches typical CA county naming\cf4 \strokec4 \
+        county \cf5 \strokec5 =\cf4 \strokec4  county_raw.replace(\cf8 \strokec8 " County"\cf4 \strokec4 , \cf8 \strokec8 ""\cf4 \strokec4 ).strip()\
+\
+        \cf5 \strokec5 try\cf4 \strokec4 :\
+            v \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 float\cf4 \strokec4 (pct)\
+        \cf5 \strokec5 except\cf4 \strokec4 :\
+            \cf5 \strokec5 continue\cf4 \strokec4 \
+\
+        \cf2 \strokec2 # because we sorted DESC by date, the first non-null per county is the most recent usable\cf4 \strokec4 \
+        \cf5 \strokec5 if\cf4 \strokec4  county \cf5 \strokec5 not\cf4 \strokec4  \cf5 \strokec5 in\cf4 \strokec4  latest:\
+            latest[county] \cf5 \strokec5 =\cf4 \strokec4  v\
+\
+    \cf7 \strokec7 print\cf4 \strokec4 (\cf5 \strokec5 f\cf8 \strokec8 "Retrieved \cf5 \strokec5 \{\cf7 \strokec7 len\cf4 \strokec4 (rows)\cf5 \strokec5 \}\cf8 \strokec8  rows; captured \cf5 \strokec5 \{\cf7 \strokec7 len\cf4 \strokec4 (latest)\cf5 \strokec5 \}\cf8 \strokec8  CA counties with non-null \cf5 \strokec5 \{\cf6 \strokec6 metric\cf5 \strokec5 \}\cf8 \strokec8 ."\cf4 \strokec4 )\
+    \cf5 \strokec5 return\cf4 \strokec4  latest\
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \strokec5 def\cf4 \strokec4  \cf7 \strokec7 fetch_state_rsv_coverage_ca\cf4 \strokec4 ():\
+    \cf8 \strokec8 """\cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf8 \strokec8     Placeholder for fetching state-level RSV vaccination coverage (e.g., older adults 60+ in California).\cf4 \strokec4 \
+\cf8 \strokec8     Currently returns np.nan (no data available).\cf4 \strokec4 \
+\cf8 \strokec8     """\cf4 \strokec4 \
+    \cf5 \strokec5 return\cf4 \strokec4  \cf6 \strokec6 np\cf4 \strokec4 .nan\
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # ------------------------------------------------------------\cf4 \strokec4 \
+\cf2 \strokec2 # 2b) BIOLOGY MODULE: RSV Fusion Protein Instability\cf4 \strokec4 \
+\cf2 \strokec2 # ------------------------------------------------------------\cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf5 \strokec5 def\cf4 \strokec4  \cf7 \strokec7 generate_synthetic_proteins\cf4 \strokec4 (\cf6 \strokec6 n\cf4 \strokec4 ):\
+    \cf8 \strokec8 """Generate n synthetic protein instability values if real data is unavailable."""\cf4 \strokec4 \
+    \cf5 \strokec5 return\cf4 \strokec4  [\cf6 \strokec6 random\cf4 \strokec4 .uniform(\cf9 \strokec9 30\cf4 \strokec4 , \cf9 \strokec9 55\cf4 \strokec4 ) \cf5 \strokec5 for\cf4 \strokec4  _ \cf5 \strokec5 in\cf4 \strokec4  \cf6 \strokec6 range\cf4 \strokec4 (\cf6 \strokec6 n\cf4 \strokec4 )]\
+\
+\cf5 \strokec5 def\cf4 \strokec4  \cf7 \strokec7 get_real_rsv_instability\cf4 \strokec4 (\cf6 \strokec6 n\cf5 \strokec5 =\cf9 \strokec9 N_CITIES\cf4 \strokec4 ):\
+    \cf8 \strokec8 """\cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf8 \strokec8     Fetches RSV Fusion (F) protein sequences from NCBI and computes their instability indices.\cf4 \strokec4 \
+\cf8 \strokec8     If unable to fetch or insufficient sequences, falls back to synthetic values.\cf4 \strokec4 \
+\cf8 \strokec8     """\cf4 \strokec4 \
+    Entrez.email \cf5 \strokec5 =\cf4 \strokec4  \cf8 \strokec8 "YOUR_NCBI_EMAIL"\cf4 \strokec4 \
+    search_term \cf5 \strokec5 =\cf4 \strokec4  \cf8 \strokec8 "Respiratory syncytial virus fusion protein"\cf4 \strokec4 \
+    \cf7 \strokec7 print\cf4 \strokec4 (\cf8 \strokec8 "--- Contacting NCBI for RSV F protein data ---"\cf4 \strokec4 )\
+    \cf5 \strokec5 try\cf4 \strokec4 :\
+        handle \cf5 \strokec5 =\cf4 \strokec4  Entrez.esearch(\cf6 \strokec6 db\cf5 \strokec5 =\cf8 \strokec8 "protein"\cf4 \strokec4 , \cf6 \strokec6 term\cf5 \strokec5 =\cf4 \strokec4 search_term, \cf6 \strokec6 retmax\cf5 \strokec5 =\cf7 \strokec7 max\cf4 \strokec4 (\cf9 \strokec9 20\cf4 \strokec4 , \cf6 \strokec6 n\cf4 \strokec4 ))\
+        record \cf5 \strokec5 =\cf4 \strokec4  Entrez.read(handle)\
+        handle.close()\
+        \cf5 \strokec5 if\cf4 \strokec4  \cf8 \strokec8 "IdList"\cf4 \strokec4  \cf5 \strokec5 not\cf4 \strokec4  \cf5 \strokec5 in\cf4 \strokec4  record \cf5 \strokec5 or\cf4 \strokec4  \cf5 \strokec5 not\cf4 \strokec4  record[\cf8 \strokec8 "IdList"\cf4 \strokec4 ]:\
+            \cf7 \strokec7 print\cf4 \strokec4 (\cf8 \strokec8 "(!) No sequences found on NCBI. Using synthetic protein data."\cf4 \strokec4 )\
+            \cf5 \strokec5 return\cf4 \strokec4  \cf7 \strokec7 generate_synthetic_proteins\cf4 \strokec4 (\cf6 \strokec6 n\cf4 \strokec4 )\
+        handle \cf5 \strokec5 =\cf4 \strokec4  Entrez.efetch(\cf6 \strokec6 db\cf5 \strokec5 =\cf8 \strokec8 "protein"\cf4 \strokec4 , \cf6 \strokec6 id\cf5 \strokec5 =\cf4 \strokec4 record[\cf8 \strokec8 "IdList"\cf4 \strokec4 ], \cf6 \strokec6 rettype\cf5 \strokec5 =\cf8 \strokec8 "fasta"\cf4 \strokec4 , \cf6 \strokec6 retmode\cf5 \strokec5 =\cf8 \strokec8 "text"\cf4 \strokec4 )\
+        sequences \cf5 \strokec5 =\cf4 \strokec4  [\cf6 \strokec6 str\cf4 \strokec4 (r.seq) \cf5 \strokec5 for\cf4 \strokec4  r \cf5 \strokec5 in\cf4 \strokec4  SeqIO.parse(handle, \cf8 \strokec8 "fasta"\cf4 \strokec4 )]\
+        handle.close()\
+        scores \cf5 \strokec5 =\cf4 \strokec4  []\
+        \cf5 \strokec5 for\cf4 \strokec4  seq \cf5 \strokec5 in\cf4 \strokec4  sequences:\
+            \cf2 \strokec2 # Remove any non-standard amino acids\cf4 \strokec4 \
+            clean_seq \cf5 \strokec5 =\cf4 \strokec4  \cf8 \strokec8 ""\cf4 \strokec4 .\cf7 \strokec7 join\cf4 \strokec4 ([aa \cf5 \strokec5 for\cf4 \strokec4  aa \cf5 \strokec5 in\cf4 \strokec4  seq \cf5 \strokec5 if\cf4 \strokec4  aa \cf5 \strokec5 in\cf4 \strokec4  \cf8 \strokec8 "ACDEFGHIKLMNPQRSTVWY"\cf4 \strokec4 ])\
+            \cf5 \strokec5 if\cf4 \strokec4  \cf7 \strokec7 len\cf4 \strokec4 (clean_seq) \cf5 \strokec5 >\cf4 \strokec4  \cf9 \strokec9 200\cf4 \strokec4 :\
+                analysis \cf5 \strokec5 =\cf4 \strokec4  ProteinAnalysis(clean_seq)\
+                scores.\cf7 \strokec7 append\cf4 \strokec4 (analysis.instability_index())\
+        \cf5 \strokec5 if\cf4 \strokec4  \cf5 \strokec5 not\cf4 \strokec4  scores:\
+            \cf7 \strokec7 print\cf4 \strokec4 (\cf8 \strokec8 "(!) No valid sequences found after filtering. Using synthetic protein data."\cf4 \strokec4 )\
+            \cf5 \strokec5 return\cf4 \strokec4  \cf7 \strokec7 generate_synthetic_proteins\cf4 \strokec4 (\cf6 \strokec6 n\cf4 \strokec4 )\
+        \cf2 \strokec2 # If less than n scores, repeat some to reach n\cf4 \strokec4 \
+        \cf5 \strokec5 while\cf4 \strokec4  \cf7 \strokec7 len\cf4 \strokec4 (scores) \cf5 \strokec5 <\cf4 \strokec4  \cf6 \strokec6 n\cf4 \strokec4 :\
+            scores.\cf7 \strokec7 append\cf4 \strokec4 (\cf6 \strokec6 random\cf4 \strokec4 .choice(scores))\
+        \cf7 \strokec7 print\cf4 \strokec4 (\cf5 \strokec5 f\cf8 \strokec8 "-> Successfully fetched \cf5 \strokec5 \{\cf7 \strokec7 len\cf4 \strokec4 (scores)\cf5 \strokec5 \}\cf8 \strokec8  instability scores from NCBI."\cf4 \strokec4 )\
+        \cf5 \strokec5 return\cf4 \strokec4  scores[:\cf6 \strokec6 n\cf4 \strokec4 ]\
+    \cf5 \strokec5 except\cf4 \strokec4  \cf6 \strokec6 Exception\cf4 \strokec4  \cf5 \strokec5 as\cf4 \strokec4  e:\
+        \cf7 \strokec7 print\cf4 \strokec4 (\cf5 \strokec5 f\cf8 \strokec8 "(!) NCBI API Error: \cf5 \strokec5 \{\cf4 \strokec4 e\cf5 \strokec5 \}\cf8 \strokec8 . Using synthetic protein data."\cf4 \strokec4 )\
+        \cf5 \strokec5 return\cf4 \strokec4  \cf7 \strokec7 generate_synthetic_proteins\cf4 \strokec4 (\cf6 \strokec6 n\cf4 \strokec4 )\
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # ------------------------------------------------------------\cf4 \strokec4 \
+\cf2 \strokec2 # 3) TRAINING DATA GENERATOR (Synthetic historical data 2020-2025)\cf4 \strokec4 \
+\cf2 \strokec2 # ------------------------------------------------------------\cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf5 \strokec5 def\cf4 \strokec4  \cf7 \strokec7 get_weather_sim\cf4 \strokec4 (\cf6 \strokec6 lat\cf4 \strokec4 , \cf6 \strokec6 month\cf4 \strokec4 , \cf6 \strokec6 zone\cf4 \strokec4 ):\
+    \cf8 \strokec8 """\cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf8 \strokec8     Generate a simulated temperature (Temp_C) and rainfall (Rain_mm) for a given location and month.\cf4 \strokec4 \
+\cf8 \strokec8     Incorporates regional differences (e.g., desert zones have larger temperature swings, less rain).\cf4 \strokec4 \
+\cf8 \strokec8     """\cf4 \strokec4 \
+    \cf2 \strokec2 # Base temperature: 22\'b0C at lat 32, decreases by 0.6\'b0C per degree latitude increase\cf4 \strokec4 \
+    base_temp \cf5 \strokec5 =\cf4 \strokec4  \cf9 \strokec9 22\cf4 \strokec4  \cf5 \strokec5 -\cf4 \strokec4  (\cf9 \strokec9 0.6\cf4 \strokec4  \cf5 \strokec5 *\cf4 \strokec4  (\cf6 \strokec6 lat\cf4 \strokec4  \cf5 \strokec5 -\cf4 \strokec4  \cf9 \strokec9 32\cf4 \strokec4 ))\
+    \cf2 \strokec2 # Temperature seasonal swing: bigger swing in desert regions\cf4 \strokec4 \
+    swing \cf5 \strokec5 =\cf4 \strokec4  \cf9 \strokec9 12\cf4 \strokec4  \cf5 \strokec5 if\cf4 \strokec4  \cf8 \strokec8 "Desert"\cf4 \strokec4  \cf5 \strokec5 in\cf4 \strokec4  \cf6 \strokec6 zone\cf4 \strokec4  \cf5 \strokec5 else\cf4 \strokec4  \cf9 \strokec9 6\cf4 \strokec4 \
+    \cf2 \strokec2 # Seasonal temperature variation (cosine wave)\cf4 \strokec4 \
+    temp \cf5 \strokec5 =\cf4 \strokec4  base_temp \cf5 \strokec5 -\cf4 \strokec4  (swing \cf5 \strokec5 *\cf4 \strokec4  \cf6 \strokec6 np\cf4 \strokec4 .cos((\cf6 \strokec6 month\cf4 \strokec4  \cf5 \strokec5 -\cf4 \strokec4  \cf9 \strokec9 1\cf4 \strokec4 ) \cf5 \strokec5 *\cf4 \strokec4  \cf9 \strokec9 2\cf4 \strokec4  \cf5 \strokec5 *\cf4 \strokec4  \cf6 \strokec6 np\cf4 \strokec4 .pi \cf5 \strokec5 /\cf4 \strokec4  \cf9 \strokec9 12\cf4 \strokec4 ))\
+    \cf2 \strokec2 # Rainfall simulation: more rain in winter months, especially at higher latitudes\cf4 \strokec4 \
+    \cf5 \strokec5 if\cf4 \strokec4  \cf6 \strokec6 month\cf4 \strokec4  \cf5 \strokec5 in\cf4 \strokec4  [\cf9 \strokec9 11\cf4 \strokec4 , \cf9 \strokec9 12\cf4 \strokec4 , \cf9 \strokec9 1\cf4 \strokec4 , \cf9 \strokec9 2\cf4 \strokec4 , \cf9 \strokec9 3\cf4 \strokec4 ]:  \cf2 \strokec2 # Nov through Mar as wet season\cf4 \strokec4 \
+        rain \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 np\cf4 \strokec4 .random.exponential(\cf9 \strokec9 50\cf4 \strokec4 ) \cf5 \strokec5 if\cf4 \strokec4  \cf6 \strokec6 lat\cf4 \strokec4  \cf5 \strokec5 >\cf4 \strokec4  \cf9 \strokec9 35\cf4 \strokec4  \cf5 \strokec5 else\cf4 \strokec4  \cf6 \strokec6 np\cf4 \strokec4 .random.exponential(\cf9 \strokec9 20\cf4 \strokec4 )\
+    \cf5 \strokec5 else\cf4 \strokec4 :\
+        rain \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 np\cf4 \strokec4 .random.exponential(\cf9 \strokec9 2\cf4 \strokec4 )\
+    \cf2 \strokec2 # Deserts get a fraction of the rain\cf4 \strokec4 \
+    \cf5 \strokec5 if\cf4 \strokec4  \cf8 \strokec8 "Desert"\cf4 \strokec4  \cf5 \strokec5 in\cf4 \strokec4  \cf6 \strokec6 zone\cf4 \strokec4 :\
+        rain \cf5 \strokec5 *=\cf4 \strokec4  \cf9 \strokec9 0.2\cf4 \strokec4 \
+    \cf5 \strokec5 return\cf4 \strokec4  \cf7 \strokec7 round\cf4 \strokec4 (temp, \cf9 \strokec9 1\cf4 \strokec4 ), \cf7 \strokec7 round\cf4 \strokec4 (rain, \cf9 \strokec9 1\cf4 \strokec4 )\
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \strokec5 def\cf4 \strokec4  \cf7 \strokec7 generate_history\cf4 \strokec4 (\cf6 \strokec6 protein_data\cf4 \strokec4 ):\
+    \cf8 \strokec8 """\cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf8 \strokec8     Generates a synthetic training dataset (2020-2025) by combining:\cf4 \strokec4 \
+\cf8 \strokec8     - Simulated weather (Temp, Rain)\cf4 \strokec4 \
+\cf8 \strokec8     - Viral protein stability (Protein_Instability)\cf4 \strokec4 \
+\cf8 \strokec8     - City demographics (Density, Vulnerability)\cf4 \strokec4 \
+\cf8 \strokec8     - County health behaviors (Smoking_Rate)\cf4 \strokec4 \
+\cf8 \strokec8     - Vaccine acceptance (Vaccination_Rate)\cf4 \strokec4 \
+\cf8 \strokec8     Outputs a pandas DataFrame with monthly records for each city.\cf4 \strokec4 \
+\cf8 \strokec8     """\cf4 \strokec4 \
+    records \cf5 \strokec5 =\cf4 \strokec4  []\
+    \cf2 \strokec2 # Map city index to protein instability for clarity\cf4 \strokec4 \
+    city_instability \cf5 \strokec5 =\cf4 \strokec4  \{i: \cf6 \strokec6 protein_data\cf4 \strokec4 [i] \cf5 \strokec5 for\cf4 \strokec4  i \cf5 \strokec5 in\cf4 \strokec4  \cf6 \strokec6 range\cf4 \strokec4 (\cf9 \strokec9 N_CITIES\cf4 \strokec4 )\}\
+    \cf2 \strokec2 # Weights for effects of smoking and vaccination on R0/cases\cf4 \strokec4 \
+    \cf9 \strokec9 W_SMOKING_R0\cf4 \strokec4  \cf5 \strokec5 =\cf4 \strokec4  \cf9 \strokec9 0.006\cf4 \strokec4    \cf2 \strokec2 # R0 increases by 0.006 per 1% increase in smoking prevalence\cf4 \strokec4 \
+    \cf9 \strokec9 W_VAX_CASES\cf4 \strokec4   \cf5 \strokec5 =\cf4 \strokec4  \cf9 \strokec9 0.003\cf4 \strokec4    \cf2 \strokec2 # Cases reduced by 0.3% per 1% increase in vaccination (proxy)\cf4 \strokec4 \
+    \cf5 \strokec5 for\cf4 \strokec4  year \cf5 \strokec5 in\cf4 \strokec4  \cf6 \strokec6 range\cf4 \strokec4 (\cf9 \strokec9 2020\cf4 \strokec4 , \cf9 \strokec9 2025\cf4 \strokec4 ):\
+        \cf5 \strokec5 for\cf4 \strokec4  month \cf5 \strokec5 in\cf4 \strokec4  \cf6 \strokec6 range\cf4 \strokec4 (\cf9 \strokec9 1\cf4 \strokec4 , \cf9 \strokec9 13\cf4 \strokec4 ):\
+            \cf5 \strokec5 for\cf4 \strokec4  i, city \cf5 \strokec5 in\cf4 \strokec4  \cf6 \strokec6 enumerate\cf4 \strokec4 (cities):\
+                temp, rain \cf5 \strokec5 =\cf4 \strokec4  \cf7 \strokec7 get_weather_sim\cf4 \strokec4 (city[\cf8 \strokec8 "Lat"\cf4 \strokec4 ], month, city[\cf8 \strokec8 "Zone"\cf4 \strokec4 ])\
+                instability \cf5 \strokec5 =\cf4 \strokec4  city_instability[i]\
+                \cf2 \strokec2 # Base R0 for RSV (starting around 1.1)\cf4 \strokec4 \
+                r0 \cf5 \strokec5 =\cf4 \strokec4  \cf9 \strokec9 1.1\cf4 \strokec4 \
+                \cf2 \strokec2 # Environmental adjustments to R0\cf4 \strokec4 \
+                \cf5 \strokec5 if\cf4 \strokec4  temp \cf5 \strokec5 <\cf4 \strokec4  \cf9 \strokec9 10\cf4 \strokec4 :        \cf2 \strokec2 # cold temperatures boost transmission\cf4 \strokec4 \
+                    r0 \cf5 \strokec5 +=\cf4 \strokec4  \cf9 \strokec9 0.9\cf4 \strokec4 \
+                \cf5 \strokec5 if\cf4 \strokec4  rain \cf5 \strokec5 >\cf4 \strokec4  \cf9 \strokec9 30\cf4 \strokec4 :        \cf2 \strokec2 # heavy rain -> more indoor crowding\cf4 \strokec4 \
+                    r0 \cf5 \strokec5 +=\cf4 \strokec4  \cf9 \strokec9 0.5\cf4 \strokec4 \
+                \cf5 \strokec5 if\cf4 \strokec4  month \cf5 \strokec5 in\cf4 \strokec4  [\cf9 \strokec9 12\cf4 \strokec4 , \cf9 \strokec9 1\cf4 \strokec4 ]: \cf2 \strokec2 # holiday/winter peak months \cf4 \strokec4 \
+                    r0 \cf5 \strokec5 +=\cf4 \strokec4  \cf9 \strokec9 0.6\cf4 \strokec4 \
+                \cf2 \strokec2 # Viral instability effect\cf4 \strokec4 \
+                \cf5 \strokec5 if\cf4 \strokec4  instability \cf5 \strokec5 <\cf4 \strokec4  \cf9 \strokec9 40\cf4 \strokec4 :    \cf2 \strokec2 # stable virus -> higher R0\cf4 \strokec4 \
+                    r0 \cf5 \strokec5 +=\cf4 \strokec4  \cf9 \strokec9 0.4\cf4 \strokec4 \
+                \cf5 \strokec5 elif\cf4 \strokec4  instability \cf5 \strokec5 >\cf4 \strokec4  \cf9 \strokec9 50\cf4 \strokec4 :  \cf2 \strokec2 # very unstable virus -> slightly lower R0\cf4 \strokec4 \
+                    r0 \cf5 \strokec5 -=\cf4 \strokec4  \cf9 \strokec9 0.2\cf4 \strokec4 \
+                \cf2 \strokec2 # Population density effect (more density => higher R0)\cf4 \strokec4 \
+                r0 \cf5 \strokec5 +=\cf4 \strokec4  (city[\cf8 \strokec8 "Density"\cf4 \strokec4 ] \cf5 \strokec5 *\cf4 \strokec4  \cf9 \strokec9 0.15\cf4 \strokec4 )\
+                \cf2 \strokec2 # Smoking prevalence effect\cf4 \strokec4 \
+                s_rate \cf5 \strokec5 =\cf4 \strokec4  city.\cf7 \strokec7 get\cf4 \strokec4 (\cf8 \strokec8 "Smoking_Rate"\cf4 \strokec4 , \cf6 \strokec6 np\cf4 \strokec4 .nan)\
+                \cf5 \strokec5 if\cf4 \strokec4  s_rate \cf5 \strokec5 is\cf4 \strokec4  \cf5 \strokec5 not\cf4 \strokec4  \cf6 \strokec6 np\cf4 \strokec4 .nan \cf5 \strokec5 and\cf4 \strokec4  \cf5 \strokec5 not\cf4 \strokec4  \cf6 \strokec6 np\cf4 \strokec4 .isnan(s_rate):\
+                    r0 \cf5 \strokec5 +=\cf4 \strokec4  s_rate \cf5 \strokec5 *\cf4 \strokec4  \cf9 \strokec9 W_SMOKING_R0\cf4 \strokec4 \
+                \cf2 \strokec2 # Compute case incidence (cases per some fixed population, scaled by vulnerability)\cf4 \strokec4 \
+                cases \cf5 \strokec5 =\cf4 \strokec4  (r0 \cf5 \strokec5 *\cf4 \strokec4  \cf9 \strokec9 80\cf4 \strokec4 ) \cf5 \strokec5 *\cf4 \strokec4  city[\cf8 \strokec8 "Vulnerability"\cf4 \strokec4 ]\
+                \cf2 \strokec2 # Vaccination effect on cases\cf4 \strokec4 \
+                v_rate \cf5 \strokec5 =\cf4 \strokec4  city.\cf7 \strokec7 get\cf4 \strokec4 (\cf8 \strokec8 "Vaccination_Rate"\cf4 \strokec4 , \cf6 \strokec6 np\cf4 \strokec4 .nan)\
+                \cf5 \strokec5 if\cf4 \strokec4  v_rate \cf5 \strokec5 is\cf4 \strokec4  \cf5 \strokec5 not\cf4 \strokec4  \cf6 \strokec6 np\cf4 \strokec4 .nan \cf5 \strokec5 and\cf4 \strokec4  \cf5 \strokec5 not\cf4 \strokec4  \cf6 \strokec6 np\cf4 \strokec4 .isnan(v_rate):\
+                    cases \cf5 \strokec5 *=\cf4 \strokec4  \cf7 \strokec7 max\cf4 \strokec4 (\cf9 \strokec9 0.2\cf4 \strokec4 , (\cf9 \strokec9 1.0\cf4 \strokec4  \cf5 \strokec5 -\cf4 \strokec4  v_rate \cf5 \strokec5 *\cf4 \strokec4  \cf9 \strokec9 W_VAX_CASES\cf4 \strokec4 ))\
+                \cf2 \strokec2 # Assemble record\cf4 \strokec4 \
+                records.\cf7 \strokec7 append\cf4 \strokec4 (\{\
+                    \cf8 \strokec8 "Year"\cf4 \strokec4 : year,\
+                    \cf8 \strokec8 "Month"\cf4 \strokec4 : month,\
+                    \cf8 \strokec8 "City"\cf4 \strokec4 : city[\cf8 \strokec8 "City"\cf4 \strokec4 ],\
+                    \cf8 \strokec8 "Lat"\cf4 \strokec4 : city[\cf8 \strokec8 "Lat"\cf4 \strokec4 ],\
+                    \cf8 \strokec8 "Lon"\cf4 \strokec4 : city[\cf8 \strokec8 "Lon"\cf4 \strokec4 ],\
+                    \cf8 \strokec8 "Zone"\cf4 \strokec4 : city[\cf8 \strokec8 "Zone"\cf4 \strokec4 ],\
+                    \cf8 \strokec8 "Density"\cf4 \strokec4 : city[\cf8 \strokec8 "Density"\cf4 \strokec4 ],\
+                    \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : city[\cf8 \strokec8 "Vulnerability"\cf4 \strokec4 ],\
+                    \cf8 \strokec8 "Temp_C"\cf4 \strokec4 : temp,\
+                    \cf8 \strokec8 "Rain_mm"\cf4 \strokec4 : rain,\
+                    \cf8 \strokec8 "Protein_Instability"\cf4 \strokec4 : instability,\
+                    \cf8 \strokec8 "Smoking_Rate"\cf4 \strokec4 : s_rate,\
+                    \cf8 \strokec8 "Vaccination_Rate"\cf4 \strokec4 : v_rate,\
+                    \cf8 \strokec8 "Cases"\cf4 \strokec4 : cases\
+                \})\
+    \cf5 \strokec5 return\cf4 \strokec4  \cf6 \strokec6 pd\cf4 \strokec4 .\cf6 \strokec6 DataFrame\cf4 \strokec4 (records)\
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # ------------------------------------------------------------\cf4 \strokec4 \
+\cf2 \strokec2 # 4) MAIN EXECUTION: Data Fetching, Model Training, Forecasting\cf4 \strokec4 \
+\cf2 \strokec2 # ------------------------------------------------------------\cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf9 \strokec9 USE_VAX_PROXY\cf4 \strokec4  \cf5 \strokec5 =\cf4 \strokec4  \cf9 \strokec9 True\cf4 \strokec4   \cf2 \strokec2 # If True, use COVID vax rates as proxy; if False, use a fixed RSV coverage (state level).\cf4 \strokec4 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf7 \strokec7 print\cf4 \strokec4 (\cf8 \strokec8 "Fetching RSV F-protein instability data..."\cf4 \strokec4 )\
+protein_data \cf5 \strokec5 =\cf4 \strokec4  \cf7 \strokec7 get_real_rsv_instability\cf4 \strokec4 (\cf9 \strokec9 N_CITIES\cf4 \strokec4 )\
+\
+\cf7 \strokec7 print\cf4 \strokec4 (\cf8 \strokec8 "Fetching county-level smoking rates and vaccination coverage..."\cf4 \strokec4 )\
+county_smoking \cf5 \strokec5 =\cf4 \strokec4  \cf7 \strokec7 fetch_county_smoking_rates_ca\cf4 \strokec4 ()\
+county_vax_cov \cf5 \strokec5 =\cf4 \strokec4  \cf7 \strokec7 fetch_county_vax_rate_covid_ca\cf4 \strokec4 ()\
+state_rsv_75plus \cf5 \strokec5 =\cf4 \strokec4  \cf7 \strokec7 fetch_state_rsv_coverage_ca\cf4 \strokec4 ()\
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # Debug: verify fetched data\cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf7 \strokec7 print\cf4 \strokec4 (\cf8 \strokec8 "Smoking data sample:"\cf4 \strokec4 , \cf6 \strokec6 list\cf4 \strokec4 (county_smoking.\cf7 \strokec7 items\cf4 \strokec4 ())[:\cf9 \strokec9 5\cf4 \strokec4 ])\
+\cf7 \strokec7 print\cf4 \strokec4 (\cf8 \strokec8 "Vaccination data sample:"\cf4 \strokec4 , \cf6 \strokec6 list\cf4 \strokec4 (county_vax_cov.\cf7 \strokec7 items\cf4 \strokec4 ())[:\cf9 \strokec9 5\cf4 \strokec4 ])\
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # Enrich city data with county-level metrics\cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf5 \strokec5 def\cf4 \strokec4  \cf7 \strokec7 get_city_enrichment\cf4 \strokec4 (\cf6 \strokec6 city_name\cf4 \strokec4 ):\
+    county \cf5 \strokec5 =\cf4 \strokec4  \cf9 \strokec9 CITY_TO_COUNTY_CA\cf4 \strokec4 .\cf7 \strokec7 get\cf4 \strokec4 (\cf6 \strokec6 city_name\cf4 \strokec4 )\
+    s_rate \cf5 \strokec5 =\cf4 \strokec4  county_smoking.\cf7 \strokec7 get\cf4 \strokec4 (county, \cf6 \strokec6 np\cf4 \strokec4 .nan)\
+    \cf5 \strokec5 if\cf4 \strokec4  \cf9 \strokec9 USE_VAX_PROXY\cf4 \strokec4 :\
+        v_rate \cf5 \strokec5 =\cf4 \strokec4  county_vax_cov.\cf7 \strokec7 get\cf4 \strokec4 (county, \cf6 \strokec6 np\cf4 \strokec4 .nan)\
+    \cf5 \strokec5 else\cf4 \strokec4 :\
+        v_rate \cf5 \strokec5 =\cf4 \strokec4  state_rsv_75plus\
+    \cf5 \strokec5 return\cf4 \strokec4  s_rate, v_rate\
+\
+\cf5 \strokec5 for\cf4 \strokec4  city \cf5 \strokec5 in\cf4 \strokec4  cities:\
+    s, v \cf5 \strokec5 =\cf4 \strokec4  \cf7 \strokec7 get_city_enrichment\cf4 \strokec4 (city[\cf8 \strokec8 "City"\cf4 \strokec4 ])\
+    city[\cf8 \strokec8 "Smoking_Rate"\cf4 \strokec4 ] \cf5 \strokec5 =\cf4 \strokec4  s\
+    city[\cf8 \strokec8 "Vaccination_Rate"\cf4 \strokec4 ] \cf5 \strokec5 =\cf4 \strokec4  v\
+\
+\pard\pardeftab720\partightenfactor0
+\cf7 \strokec7 print\cf4 \strokec4 (\cf8 \strokec8 "Generating synthetic historical dataset (2020-2025)..."\cf4 \strokec4 )\
+df_train \cf5 \strokec5 =\cf4 \strokec4  \cf7 \strokec7 generate_history\cf4 \strokec4 (protein_data)\
+\cf7 \strokec7 print\cf4 \strokec4 (\cf5 \strokec5 f\cf8 \strokec8 "Training data size: \cf5 \strokec5 \{\cf4 \strokec4 df_train.shape\cf5 \strokec5 \}\cf8 \strokec8 "\cf4 \strokec4 )\
+\
+\cf7 \strokec7 print\cf4 \strokec4 (\cf8 \strokec8 "Training Random Forest model..."\cf4 \strokec4 )\
+features \cf5 \strokec5 =\cf4 \strokec4  [\cf8 \strokec8 "Lat"\cf4 \strokec4 , \cf8 \strokec8 "Density"\cf4 \strokec4 , \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 , \cf8 \strokec8 "Temp_C"\cf4 \strokec4 , \cf8 \strokec8 "Rain_mm"\cf4 \strokec4 , \cf8 \strokec8 "Month"\cf4 \strokec4 ,\
+            \cf8 \strokec8 "Protein_Instability"\cf4 \strokec4 , \cf8 \strokec8 "Smoking_Rate"\cf4 \strokec4 , \cf8 \strokec8 "Vaccination_Rate"\cf4 \strokec4 ]\
+target \cf5 \strokec5 =\cf4 \strokec4  \cf8 \strokec8 "Cases"\cf4 \strokec4 \
+model \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 RandomForestRegressor\cf4 \strokec4 (\cf6 \strokec6 n_estimators\cf5 \strokec5 =\cf9 \strokec9 100\cf4 \strokec4 , \cf6 \strokec6 random_state\cf5 \strokec5 =\cf9 \strokec9 42\cf4 \strokec4 )\
+model.\cf7 \strokec7 fit\cf4 \strokec4 (df_train[features], df_train[target])\
+\cf7 \strokec7 print\cf4 \strokec4 (\cf8 \strokec8 "Model training complete."\cf4 \strokec4 )\
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # ------------------------------------------------------------\cf4 \strokec4 \
+\cf2 \strokec2 # 5) FORECAST FUTURE (2026\'962027)\cf4 \strokec4 \
+\cf2 \strokec2 # ------------------------------------------------------------\cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf7 \strokec7 print\cf4 \strokec4 (\cf8 \strokec8 "Forecasting 24-month period (2026-2027)..."\cf4 \strokec4 )\
+future_records \cf5 \strokec5 =\cf4 \strokec4  []\
+\pard\pardeftab720\partightenfactor0
+\cf9 \strokec9 W_VAX_HOSP\cf4 \strokec4  \cf5 \strokec5 =\cf4 \strokec4  \cf9 \strokec9 0.006\cf4 \strokec4   \cf2 \strokec2 # Hospitalization reduction 0.6% per 1% vaccinated\cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf5 \strokec5 for\cf4 \strokec4  year \cf5 \strokec5 in\cf4 \strokec4  [\cf9 \strokec9 2026\cf4 \strokec4 , \cf9 \strokec9 2027\cf4 \strokec4 ]:\
+    \cf5 \strokec5 for\cf4 \strokec4  month \cf5 \strokec5 in\cf4 \strokec4  \cf6 \strokec6 range\cf4 \strokec4 (\cf9 \strokec9 1\cf4 \strokec4 , \cf9 \strokec9 13\cf4 \strokec4 ):\
+        \cf5 \strokec5 for\cf4 \strokec4  i, city \cf5 \strokec5 in\cf4 \strokec4  \cf6 \strokec6 enumerate\cf4 \strokec4 (cities):\
+            temp, rain \cf5 \strokec5 =\cf4 \strokec4  \cf7 \strokec7 get_weather_sim\cf4 \strokec4 (city[\cf8 \strokec8 "Lat"\cf4 \strokec4 ], month, city[\cf8 \strokec8 "Zone"\cf4 \strokec4 ])\
+            \cf2 \strokec2 # Assume slight trend: increase temp by 0.5\'b0C and slightly more rain in Jan-Feb\cf4 \strokec4 \
+            temp \cf5 \strokec5 +=\cf4 \strokec4  \cf9 \strokec9 0.5\cf4 \strokec4 \
+            \cf5 \strokec5 if\cf4 \strokec4  month \cf5 \strokec5 in\cf4 \strokec4  [\cf9 \strokec9 1\cf4 \strokec4 , \cf9 \strokec9 2\cf4 \strokec4 ]:\
+                rain \cf5 \strokec5 *=\cf4 \strokec4  \cf9 \strokec9 1.1\cf4 \strokec4 \
+            instability \cf5 \strokec5 =\cf4 \strokec4  protein_data[i]  \cf2 \strokec2 # use the same instability profile as baseline\cf4 \strokec4 \
+            s_rate \cf5 \strokec5 =\cf4 \strokec4  city.\cf7 \strokec7 get\cf4 \strokec4 (\cf8 \strokec8 "Smoking_Rate"\cf4 \strokec4 , \cf6 \strokec6 np\cf4 \strokec4 .nan)\
+            v_rate \cf5 \strokec5 =\cf4 \strokec4  city.\cf7 \strokec7 get\cf4 \strokec4 (\cf8 \strokec8 "Vaccination_Rate"\cf4 \strokec4 , \cf6 \strokec6 np\cf4 \strokec4 .nan)\
+            \cf2 \strokec2 # Predict cases using trained model\cf4 \strokec4 \
+            \cf9 \strokec9 X\cf4 \strokec4  \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 np\cf4 \strokec4 .array([[city[\cf8 \strokec8 "Lat"\cf4 \strokec4 ], city[\cf8 \strokec8 "Density"\cf4 \strokec4 ], city[\cf8 \strokec8 "Vulnerability"\cf4 \strokec4 ], temp, rain, month,\
+                           instability, s_rate, v_rate]])\
+            pred_cases \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 float\cf4 \strokec4 (model.\cf7 \strokec7 predict\cf4 \strokec4 (\cf9 \strokec9 X\cf4 \strokec4 )[\cf9 \strokec9 0\cf4 \strokec4 ])\
+            \cf2 \strokec2 # Estimate hospitalization rate (per 100k) from cases\cf4 \strokec4 \
+            hosp_rate \cf5 \strokec5 =\cf4 \strokec4  pred_cases \cf5 \strokec5 *\cf4 \strokec4  \cf9 \strokec9 0.025\cf4 \strokec4   \cf2 \strokec2 # assume fixed hospitalization ratio\cf4 \strokec4 \
+            \cf5 \strokec5 if\cf4 \strokec4  v_rate \cf5 \strokec5 is\cf4 \strokec4  \cf5 \strokec5 not\cf4 \strokec4  \cf6 \strokec6 np\cf4 \strokec4 .nan \cf5 \strokec5 and\cf4 \strokec4  \cf5 \strokec5 not\cf4 \strokec4  \cf6 \strokec6 np\cf4 \strokec4 .isnan(v_rate):\
+                hosp_rate \cf5 \strokec5 *=\cf4 \strokec4  \cf7 \strokec7 max\cf4 \strokec4 (\cf9 \strokec9 0.15\cf4 \strokec4 , (\cf9 \strokec9 1.0\cf4 \strokec4  \cf5 \strokec5 -\cf4 \strokec4  v_rate \cf5 \strokec5 *\cf4 \strokec4  \cf9 \strokec9 W_VAX_HOSP\cf4 \strokec4 ))\
+            future_records.\cf7 \strokec7 append\cf4 \strokec4 (\{\
+                \cf8 \strokec8 "Date"\cf4 \strokec4 : \cf6 \strokec6 pd\cf4 \strokec4 .\cf6 \strokec6 Timestamp\cf4 \strokec4 (\cf5 \strokec5 f\cf8 \strokec8 "\cf5 \strokec5 \{\cf4 \strokec4 year\cf5 \strokec5 \}\cf8 \strokec8 -\cf5 \strokec5 \{\cf4 \strokec4 month\cf5 \strokec5 :02d\}\cf8 \strokec8 -01"\cf4 \strokec4 ),\
+                \cf8 \strokec8 "Year"\cf4 \strokec4 : year,\
+                \cf8 \strokec8 "Month"\cf4 \strokec4 : month,\
+                \cf8 \strokec8 "City"\cf4 \strokec4 : city[\cf8 \strokec8 "City"\cf4 \strokec4 ],\
+                \cf8 \strokec8 "Lat"\cf4 \strokec4 : city[\cf8 \strokec8 "Lat"\cf4 \strokec4 ],\
+                \cf8 \strokec8 "Lon"\cf4 \strokec4 : city[\cf8 \strokec8 "Lon"\cf4 \strokec4 ],\
+                \cf8 \strokec8 "Zone"\cf4 \strokec4 : city[\cf8 \strokec8 "Zone"\cf4 \strokec4 ],\
+                \cf8 \strokec8 "Density"\cf4 \strokec4 : city[\cf8 \strokec8 "Density"\cf4 \strokec4 ],\
+                \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : city[\cf8 \strokec8 "Vulnerability"\cf4 \strokec4 ],\
+                \cf8 \strokec8 "Temp_C"\cf4 \strokec4 : \cf7 \strokec7 round\cf4 \strokec4 (temp, \cf9 \strokec9 1\cf4 \strokec4 ),\
+                \cf8 \strokec8 "Rain_mm"\cf4 \strokec4 : \cf7 \strokec7 round\cf4 \strokec4 (rain, \cf9 \strokec9 1\cf4 \strokec4 ),\
+                \cf8 \strokec8 "Protein_Instability"\cf4 \strokec4 : instability,\
+                \cf8 \strokec8 "Smoking_Rate"\cf4 \strokec4 : s_rate,\
+                \cf8 \strokec8 "Vaccination_Rate"\cf4 \strokec4 : v_rate,\
+                \cf8 \strokec8 "Pred_Cases"\cf4 \strokec4 : \cf6 \strokec6 int\cf4 \strokec4 (pred_cases),\
+                \cf8 \strokec8 "Hosp_Rate"\cf4 \strokec4 : \cf7 \strokec7 round\cf4 \strokec4 (hosp_rate, \cf9 \strokec9 1\cf4 \strokec4 )\
+            \})\
+\
+df_forecast \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 pd\cf4 \strokec4 .\cf6 \strokec6 DataFrame\cf4 \strokec4 (future_records)\
+\pard\pardeftab720\partightenfactor0
+\cf7 \strokec7 print\cf4 \strokec4 (\cf5 \strokec5 f\cf8 \strokec8 "Forecast data size: \cf5 \strokec5 \{\cf4 \strokec4 df_forecast.shape\cf5 \strokec5 \}\cf8 \strokec8 "\cf4 \strokec4 )\
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # ------------------------------------------------------------\cf4 \strokec4 \
+\cf2 \strokec2 # 6) EXPORT FORECAST TO CSV\cf4 \strokec4 \
+\cf2 \strokec2 # ------------------------------------------------------------\cf4 \strokec4 \
+output_csv \cf5 \strokec5 =\cf4 \strokec4  \cf8 \strokec8 "rsv_forecast_2026_2027.csv"\cf4 \strokec4 \
+df_forecast.\cf7 \strokec7 to_csv\cf4 \strokec4 (output_csv, \cf6 \strokec6 index\cf5 \strokec5 =\cf9 \strokec9 False\cf4 \strokec4 )\
+\pard\pardeftab720\partightenfactor0
+\cf7 \strokec7 print\cf4 \strokec4 (\cf5 \strokec5 f\cf8 \strokec8 "Forecast data saved to \cf5 \strokec5 \{\cf4 \strokec4 output_csv\cf5 \strokec5 \}\cf8 \strokec8 "\cf4 \strokec4 )\
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # ------------------------------------------------------------\cf4 \strokec4 \
+\cf2 \strokec2 # 7) VISUALIZATION 1: Peaks & Valleys Graph\cf4 \strokec4 \
+\cf2 \strokec2 # ------------------------------------------------------------\cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf7 \strokec7 print\cf4 \strokec4 (\cf8 \strokec8 "Generating 'Peaks & Valleys' overview graph..."\cf4 \strokec4 )\
+\pard\pardeftab720\partightenfactor0
+\cf6 \strokec6 plt\cf4 \strokec4 .\cf7 \strokec7 figure\cf4 \strokec4 (\cf6 \strokec6 figsize\cf5 \strokec5 =\cf4 \strokec4 (\cf9 \strokec9 15\cf4 \strokec4 , \cf9 \strokec9 7\cf4 \strokec4 ))\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # Statewide average cases\cf4 \strokec4 \
+statewide \cf5 \strokec5 =\cf4 \strokec4  df_forecast.\cf7 \strokec7 groupby\cf4 \strokec4 (\cf8 \strokec8 "Date"\cf4 \strokec4 )[\cf8 \strokec8 "Pred_Cases"\cf4 \strokec4 ].\cf7 \strokec7 mean\cf4 \strokec4 ()\
+\pard\pardeftab720\partightenfactor0
+\cf6 \strokec6 plt\cf4 \strokec4 .\cf7 \strokec7 plot\cf4 \strokec4 (statewide.index, statewide.values, \cf6 \strokec6 color\cf5 \strokec5 =\cf8 \strokec8 "black"\cf4 \strokec4 , \cf6 \strokec6 linewidth\cf5 \strokec5 =\cf9 \strokec9 3\cf4 \strokec4 , \cf6 \strokec6 label\cf5 \strokec5 =\cf8 \strokec8 "Statewide Average"\cf4 \strokec4 , \cf6 \strokec6 zorder\cf5 \strokec5 =\cf9 \strokec9 10\cf4 \strokec4 )\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # Plot by major zone categories (aggregated)\cf4 \strokec4 \
+zones \cf5 \strokec5 =\cf4 \strokec4  [\cf8 \strokec8 "Bay Area"\cf4 \strokec4 , \cf8 \strokec8 "Central Valley"\cf4 \strokec4 , \cf8 \strokec8 "SoCal"\cf4 \strokec4 , \cf8 \strokec8 "Desert"\cf4 \strokec4 , \cf8 \strokec8 "Mountain"\cf4 \strokec4 ]\
+colors \cf5 \strokec5 =\cf4 \strokec4  [\cf8 \strokec8 "#1f77b4"\cf4 \strokec4 , \cf8 \strokec8 "#ff7f0e"\cf4 \strokec4 , \cf8 \strokec8 "#2ca02c"\cf4 \strokec4 , \cf8 \strokec8 "#d62728"\cf4 \strokec4 , \cf8 \strokec8 "#9467bd"\cf4 \strokec4 ]\
+\pard\pardeftab720\partightenfactor0
+\cf5 \strokec5 for\cf4 \strokec4  zone, color \cf5 \strokec5 in\cf4 \strokec4  \cf6 \strokec6 zip\cf4 \strokec4 (zones, colors):\
+    zone_mask \cf5 \strokec5 =\cf4 \strokec4  df_forecast[\cf8 \strokec8 "Zone"\cf4 \strokec4 ].str.\cf7 \strokec7 contains\cf4 \strokec4 (zone, \cf6 \strokec6 case\cf5 \strokec5 =\cf9 \strokec9 False\cf4 \strokec4 , \cf6 \strokec6 na\cf5 \strokec5 =\cf9 \strokec9 False\cf4 \strokec4 )\
+    zone_series \cf5 \strokec5 =\cf4 \strokec4  df_forecast[zone_mask].\cf7 \strokec7 groupby\cf4 \strokec4 (\cf8 \strokec8 "Date"\cf4 \strokec4 )[\cf8 \strokec8 "Pred_Cases"\cf4 \strokec4 ].\cf7 \strokec7 mean\cf4 \strokec4 ()\
+    \cf5 \strokec5 if\cf4 \strokec4  \cf5 \strokec5 not\cf4 \strokec4  zone_series.empty:\
+        \cf6 \strokec6 plt\cf4 \strokec4 .\cf7 \strokec7 plot\cf4 \strokec4 (zone_series.index, zone_series.values, \cf6 \strokec6 label\cf5 \strokec5 =\cf4 \strokec4 zone, \cf6 \strokec6 color\cf5 \strokec5 =\cf4 \strokec4 color, \cf6 \strokec6 alpha\cf5 \strokec5 =\cf9 \strokec9 0.7\cf4 \strokec4 )\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # Highlight winter periods (Jan-Feb) with a translucent red overlay\cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf5 \strokec5 for\cf4 \strokec4  year \cf5 \strokec5 in\cf4 \strokec4  [\cf9 \strokec9 2026\cf4 \strokec4 , \cf9 \strokec9 2027\cf4 \strokec4 ]:\
+    \cf6 \strokec6 plt\cf4 \strokec4 .\cf7 \strokec7 axvspan\cf4 \strokec4 (\cf6 \strokec6 pd\cf4 \strokec4 .\cf6 \strokec6 Timestamp\cf4 \strokec4 (\cf5 \strokec5 f\cf8 \strokec8 "\cf5 \strokec5 \{\cf4 \strokec4 year\cf5 \strokec5 \}\cf8 \strokec8 -01-01"\cf4 \strokec4 ), \cf6 \strokec6 pd\cf4 \strokec4 .\cf6 \strokec6 Timestamp\cf4 \strokec4 (\cf5 \strokec5 f\cf8 \strokec8 "\cf5 \strokec5 \{\cf4 \strokec4 year\cf5 \strokec5 \}\cf8 \strokec8 -03-01"\cf4 \strokec4 ), \cf6 \strokec6 color\cf5 \strokec5 =\cf8 \strokec8 "red"\cf4 \strokec4 , \cf6 \strokec6 alpha\cf5 \strokec5 =\cf9 \strokec9 0.1\cf4 \strokec4 )\
+\pard\pardeftab720\partightenfactor0
+\cf6 \strokec6 plt\cf4 \strokec4 .\cf7 \strokec7 title\cf4 \strokec4 (\cf8 \strokec8 "California RSV Bio-Forecast (2026-2027): Peaks & Valleys by Region"\cf4 \strokec4 , \cf6 \strokec6 fontsize\cf5 \strokec5 =\cf9 \strokec9 16\cf4 \strokec4 )\
+\cf6 \strokec6 plt\cf4 \strokec4 .\cf7 \strokec7 ylabel\cf4 \strokec4 (\cf8 \strokec8 "Predicted Cases per 100k population"\cf4 \strokec4 , \cf6 \strokec6 fontsize\cf5 \strokec5 =\cf9 \strokec9 12\cf4 \strokec4 )\
+\cf6 \strokec6 plt\cf4 \strokec4 .\cf7 \strokec7 xlabel\cf4 \strokec4 (\cf8 \strokec8 "Date"\cf4 \strokec4 , \cf6 \strokec6 fontsize\cf5 \strokec5 =\cf9 \strokec9 12\cf4 \strokec4 )\
+\cf6 \strokec6 plt\cf4 \strokec4 .\cf7 \strokec7 legend\cf4 \strokec4 (\cf6 \strokec6 loc\cf5 \strokec5 =\cf8 \strokec8 "upper right"\cf4 \strokec4 )\
+\cf6 \strokec6 plt\cf4 \strokec4 .\cf7 \strokec7 grid\cf4 \strokec4 (\cf9 \strokec9 True\cf4 \strokec4 , \cf6 \strokec6 alpha\cf5 \strokec5 =\cf9 \strokec9 0.3\cf4 \strokec4 )\
+\cf6 \strokec6 plt\cf4 \strokec4 .\cf7 \strokec7 tight_layout\cf4 \strokec4 ()\
+graph_file \cf5 \strokec5 =\cf4 \strokec4  \cf8 \strokec8 "california_rsv_forecast_graph.png"\cf4 \strokec4 \
+\cf6 \strokec6 plt\cf4 \strokec4 .\cf7 \strokec7 savefig\cf4 \strokec4 (graph_file, \cf6 \strokec6 dpi\cf5 \strokec5 =\cf9 \strokec9 150\cf4 \strokec4 )\
+\cf6 \strokec6 plt\cf4 \strokec4 .\cf7 \strokec7 close\cf4 \strokec4 ()\
+\pard\pardeftab720\partightenfactor0
+\cf7 \strokec7 print\cf4 \strokec4 (\cf5 \strokec5 f\cf8 \strokec8 "Graph saved: \cf5 \strokec5 \{\cf4 \strokec4 graph_file\cf5 \strokec5 \}\cf8 \strokec8 "\cf4 \strokec4 )\
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # ------------------------------------------------------------\cf4 \strokec4 \
+\cf2 \strokec2 # 8) ARCGIS ONLINE MAPPING: Publish Forecast Snapshot\cf4 \strokec4 \
+\cf2 \strokec2 # ------------------------------------------------------------\cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf7 \strokec7 print\cf4 \strokec4 (\cf8 \strokec8 "Signing into ArcGIS Online and publishing layers..."\cf4 \strokec4 )\
+\pard\pardeftab720\partightenfactor0
+\cf5 \strokec5 from\cf4 \strokec4  arcgis.gis \cf5 \strokec5 import\cf4 \strokec4  \cf9 \strokec9 GIS\cf4 \strokec4 \
+\cf5 \strokec5 from\cf4 \strokec4  arcgis.features \cf5 \strokec5 import\cf4 \strokec4  GeoAccessor\
+\cf5 \strokec5 import\cf4 \strokec4  \cf6 \strokec6 getpass\cf4 \strokec4 \
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # Prompt for ArcGIS Online credentials\cf4 \strokec4 \
+password \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 getpass\cf4 \strokec4 .\cf7 \strokec7 getpass\cf4 \strokec4 (\cf5 \strokec5 f\cf8 \strokec8 "ArcGIS Online password for \cf5 \strokec5 \{\cf9 \strokec9 ARCGIS_USERNAME\cf5 \strokec5 \}\cf8 \strokec8 : "\cf4 \strokec4 )\
+gis \cf5 \strokec5 =\cf4 \strokec4  GIS(\cf8 \strokec8 "https://www.arcgis.com"\cf4 \strokec4 , \cf9 \strokec9 ARCGIS_USERNAME\cf4 \strokec4 , password)\
+\pard\pardeftab720\partightenfactor0
+\cf7 \strokec7 print\cf4 \strokec4 (\cf8 \strokec8 "Signed in as:"\cf4 \strokec4 , gis.users.me.username)\
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # Prepare a January 2026 forecast snapshot for mapping\cf4 \strokec4 \
+df_map \cf5 \strokec5 =\cf4 \strokec4  df_forecast[(df_forecast[\cf8 \strokec8 "Year"\cf4 \strokec4 ] \cf9 \strokec9 ==\cf4 \strokec4  \cf9 \strokec9 2026\cf4 \strokec4 ) \cf9 \strokec9 &\cf4 \strokec4  (df_forecast[\cf8 \strokec8 "Month"\cf4 \strokec4 ] \cf9 \strokec9 ==\cf4 \strokec4  \cf9 \strokec9 1\cf4 \strokec4 )].\cf7 \strokec7 copy\cf4 \strokec4 ()\
+\cf2 \strokec2 # Ensure Date is datetime and drop unneeded columns for map\cf4 \strokec4 \
+df_map[\cf8 \strokec8 "Date"\cf4 \strokec4 ] \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 pd\cf4 \strokec4 .\cf7 \strokec7 to_datetime\cf4 \strokec4 (df_map[\cf8 \strokec8 "Date"\cf4 \strokec4 ])\
+\cf2 \strokec2 # Rename columns to be shapefile/feature layer friendly (<=10 chars, no special chars)\cf4 \strokec4 \
+rename_map \cf5 \strokec5 =\cf4 \strokec4  \{\
+    \cf8 \strokec8 "Vulnerability"\cf4 \strokec4 : \cf8 \strokec8 "Vuln"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Protein_Instability"\cf4 \strokec4 : \cf8 \strokec8 "ProtInst"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Smoking_Rate"\cf4 \strokec4 : \cf8 \strokec8 "SmokePct"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Vaccination_Rate"\cf4 \strokec4 : \cf8 \strokec8 "VaxPct"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Pred_Cases"\cf4 \strokec4 : \cf8 \strokec8 "PredCases"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Hosp_Rate"\cf4 \strokec4 : \cf8 \strokec8 "HospRate"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Density"\cf4 \strokec4 : \cf8 \strokec8 "Density"\cf4 \strokec4 ,  \cf2 \strokec2 # <=10 chars already\cf4 \strokec4 \
+    \cf8 \strokec8 "Temp_C"\cf4 \strokec4 : \cf8 \strokec8 "TempC"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "Rain_mm"\cf4 \strokec4 : \cf8 \strokec8 "RainMM"\cf4 \strokec4 \
+\}\
+\pard\pardeftab720\partightenfactor0
+\cf5 \strokec5 for\cf4 \strokec4  col, new_col \cf5 \strokec5 in\cf4 \strokec4  rename_map.\cf7 \strokec7 items\cf4 \strokec4 ():\
+    \cf5 \strokec5 if\cf4 \strokec4  col \cf5 \strokec5 in\cf4 \strokec4  df_map.columns:\
+        df_map.\cf7 \strokec7 rename\cf4 \strokec4 (\cf6 \strokec6 columns\cf5 \strokec5 =\cf4 \strokec4 \{col: new_col\}, \cf6 \strokec6 inplace\cf5 \strokec5 =\cf9 \strokec9 True\cf4 \strokec4 )\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # Ensure all column names <= 10 characters (just in case)\cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf5 \strokec5 for\cf4 \strokec4  col \cf5 \strokec5 in\cf4 \strokec4  \cf6 \strokec6 list\cf4 \strokec4 (df_map.columns):\
+    \cf5 \strokec5 if\cf4 \strokec4  \cf7 \strokec7 len\cf4 \strokec4 (col) \cf5 \strokec5 >\cf4 \strokec4  \cf9 \strokec9 10\cf4 \strokec4 :\
+        df_map.\cf7 \strokec7 rename\cf4 \strokec4 (\cf6 \strokec6 columns\cf5 \strokec5 =\cf4 \strokec4 \{col: col[:\cf9 \strokec9 10\cf4 \strokec4 ]\}, \cf6 \strokec6 inplace\cf5 \strokec5 =\cf9 \strokec9 True\cf4 \strokec4 )\
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # Create Spatially Enabled DataFrame\cf4 \strokec4 \
+sdf \cf5 \strokec5 =\cf4 \strokec4  GeoAccessor.from_xy(df_map, \cf6 \strokec6 x_column\cf5 \strokec5 =\cf8 \strokec8 "Lon"\cf4 \strokec4 , \cf6 \strokec6 y_column\cf5 \strokec5 =\cf8 \strokec8 "Lat"\cf4 \strokec4 , \cf6 \strokec6 sr\cf5 \strokec5 =\cf9 \strokec9 4326\cf4 \strokec4 )\
+\
+\cf2 \strokec2 # Helper function to publish a spatial dataframe as a feature layer\cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf5 \strokec5 def\cf4 \strokec4  \cf7 \strokec7 publish_sdf_as_featurelayer\cf4 \strokec4 (\cf6 \strokec6 sdf\cf4 \strokec4 , \cf6 \strokec6 gis_conn\cf4 \strokec4 , \cf6 \strokec6 title\cf4 \strokec4 , \cf6 \strokec6 tags\cf5 \strokec5 =\cf9 \strokec9 None\cf4 \strokec4 , \cf6 \strokec6 folder\cf5 \strokec5 =\cf9 \strokec9 None\cf4 \strokec4 ):\
+    \cf6 \strokec6 tags\cf4 \strokec4  \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 tags\cf4 \strokec4  \cf5 \strokec5 or\cf4 \strokec4  [\cf8 \strokec8 "RSV"\cf4 \strokec4 , \cf8 \strokec8 "Forecast"\cf4 \strokec4 , \cf8 \strokec8 "California"\cf4 \strokec4 , \cf8 \strokec8 "Public Health"\cf4 \strokec4 ]\
+    fl_collection \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 sdf\cf4 \strokec4 .spatial.to_featurelayer(\cf6 \strokec6 title\cf5 \strokec5 =\cf6 \strokec6 title\cf4 \strokec4 , \cf6 \strokec6 gis\cf5 \strokec5 =\cf6 \strokec6 gis_conn\cf4 \strokec4 , \cf6 \strokec6 tags\cf5 \strokec5 =\cf6 \strokec6 tags\cf4 \strokec4 , \cf6 \strokec6 folder\cf5 \strokec5 =\cf6 \strokec6 folder\cf4 \strokec4 )\
+    \cf5 \strokec5 return\cf4 \strokec4  fl_collection\
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # Publish point layer (cities with forecast data) and a heatmap layer for rainfall as examples\cf4 \strokec4 \
+points_title \cf5 \strokec5 =\cf4 \strokec4  \cf8 \strokec8 "California RSV Forecast (Jan 2026) - Points"\cf4 \strokec4 \
+heat_title   \cf5 \strokec5 =\cf4 \strokec4  \cf8 \strokec8 "California RSV Forecast (Jan 2026) - Rain Heatmap"\cf4 \strokec4 \
+points_flc \cf5 \strokec5 =\cf4 \strokec4  \cf7 \strokec7 publish_sdf_as_featurelayer\cf4 \strokec4 (sdf, gis, points_title)\
+heat_flc   \cf5 \strokec5 =\cf4 \strokec4  \cf7 \strokec7 publish_sdf_as_featurelayer\cf4 \strokec4 (sdf, gis, heat_title)\
+points_layer \cf5 \strokec5 =\cf4 \strokec4  points_flc.layers[\cf9 \strokec9 0\cf4 \strokec4 ]\
+heat_layer   \cf5 \strokec5 =\cf4 \strokec4  heat_flc.layers[\cf9 \strokec9 0\cf4 \strokec4 ]\
+\
+\cf2 \strokec2 # Try to find a reference USA Counties layer for context\cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf5 \strokec5 def\cf4 \strokec4  \cf7 \strokec7 find_counties_layer\cf4 \strokec4 (\cf6 \strokec6 gis_conn\cf4 \strokec4 ):\
+    queries \cf5 \strokec5 =\cf4 \strokec4  [\
+        \cf8 \strokec8 'title:"USA Counties" AND type:"Feature Layer"'\cf4 \strokec4 , \
+        \cf8 \strokec8 'title:"USA Counties (Generalized)" AND type:"Feature Layer"'\cf4 \strokec4 ,\
+        \cf8 \strokec8 'title:"Counties" AND type:"Feature Layer" AND owner:esri'\cf4 \strokec4 \
+    ]\
+    \cf5 \strokec5 for\cf4 \strokec4  q \cf5 \strokec5 in\cf4 \strokec4  queries:\
+        items \cf5 \strokec5 =\cf4 \strokec4  \cf6 \strokec6 gis_conn\cf4 \strokec4 .content.search(q, \cf6 \strokec6 max_items\cf5 \strokec5 =\cf9 \strokec9 5\cf4 \strokec4 )\
+        \cf5 \strokec5 for\cf4 \strokec4  item \cf5 \strokec5 in\cf4 \strokec4  items:\
+            \cf5 \strokec5 try\cf4 \strokec4 :\
+                \cf5 \strokec5 return\cf4 \strokec4  item.layers[\cf9 \strokec9 0\cf4 \strokec4 ]\
+            \cf5 \strokec5 except\cf4 \strokec4 :\
+                \cf5 \strokec5 continue\cf4 \strokec4 \
+    \cf5 \strokec5 return\cf4 \strokec4  \cf9 \strokec9 None\cf4 \strokec4 \
+\
+counties_layer \cf5 \strokec5 =\cf4 \strokec4  \cf7 \strokec7 find_counties_layer\cf4 \strokec4 (gis)\
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # Create a web map and add layers\cf4 \strokec4 \
+\
+webmap \cf5 \strokec5 =\cf4 \strokec4  gis.map(\cf8 \strokec8 "California"\cf4 \strokec4 )\
+webmap.zoom \cf5 \strokec5 =\cf4 \strokec4  \cf9 \strokec9 6\cf4 \strokec4 \
+\
+\
+\pard\pardeftab720\partightenfactor0
+\cf5 \strokec5 if\cf4 \strokec4  counties_layer:\
+    \cf2 \strokec2 # Filter counties to California only if possible\cf4 \strokec4 \
+    \cf5 \strokec5 try\cf4 \strokec4 :\
+        counties_layer.definition_expression \cf5 \strokec5 =\cf4 \strokec4  \cf8 \strokec8 "STATE_NAME = 'California' OR STATE_ABBR = 'CA'"\cf4 \strokec4 \
+    \cf5 \strokec5 except\cf4 \strokec4 :\
+        \cf5 \strokec5 pass\cf4 \strokec4 \
+    webmap.add_layer(counties_layer)\
+webmap.layers \cf5 \strokec5 =\cf4 \strokec4  [heat_layer, points_layer]\
+\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # Configure symbology for points (based on hospitalization rate)\cf4 \strokec4 \
+points_renderer \cf5 \strokec5 =\cf4 \strokec4  \{\
+    \cf8 \strokec8 "type"\cf4 \strokec4 : \cf8 \strokec8 "classBreaks"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "field"\cf4 \strokec4 : \cf8 \strokec8 "HospRate"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "classificationMethod"\cf4 \strokec4 : \cf8 \strokec8 "esriClassifyManual"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "minValue"\cf4 \strokec4 : \cf9 \strokec9 0\cf4 \strokec4 ,\
+    \cf8 \strokec8 "classBreakInfos"\cf4 \strokec4 : [\
+        \{\
+            \cf8 \strokec8 "classMaxValue"\cf4 \strokec4 : \cf9 \strokec9 5\cf4 \strokec4 ,\
+            \cf8 \strokec8 "label"\cf4 \strokec4 : \cf8 \strokec8 "\uc0\u8804  5 (Low)"\cf4 \strokec4 ,\
+            \cf8 \strokec8 "symbol"\cf4 \strokec4 : \{\
+                \cf8 \strokec8 "type"\cf4 \strokec4 : \cf8 \strokec8 "esriSMS"\cf4 \strokec4 ,\
+                \cf8 \strokec8 "style"\cf4 \strokec4 : \cf8 \strokec8 "esriSMSCircle"\cf4 \strokec4 , \cf8 \strokec8 "size"\cf4 \strokec4 : \cf9 \strokec9 8\cf4 \strokec4 ,\
+                \cf8 \strokec8 "color"\cf4 \strokec4 : [\cf9 \strokec9 50\cf4 \strokec4 , \cf9 \strokec9 205\cf4 \strokec4 , \cf9 \strokec9 50\cf4 \strokec4 , \cf9 \strokec9 180\cf4 \strokec4 ],\
+                \cf8 \strokec8 "outline"\cf4 \strokec4 : \{\cf8 \strokec8 "color"\cf4 \strokec4 : [\cf9 \strokec9 30\cf4 \strokec4 , \cf9 \strokec9 30\cf4 \strokec4 , \cf9 \strokec9 30\cf4 \strokec4 , \cf9 \strokec9 220\cf4 \strokec4 ], \cf8 \strokec8 "width"\cf4 \strokec4 : \cf9 \strokec9 1\cf4 \strokec4 \}\
+            \}\
+        \},\
+        \{\
+            \cf8 \strokec8 "classMaxValue"\cf4 \strokec4 : \cf9 \strokec9 10\cf4 \strokec4 ,\
+            \cf8 \strokec8 "label"\cf4 \strokec4 : \cf8 \strokec8 "> 5 (Medium)"\cf4 \strokec4 ,\
+            \cf8 \strokec8 "symbol"\cf4 \strokec4 : \{\
+                \cf8 \strokec8 "type"\cf4 \strokec4 : \cf8 \strokec8 "esriSMS"\cf4 \strokec4 ,\
+                \cf8 \strokec8 "style"\cf4 \strokec4 : \cf8 \strokec8 "esriSMSCircle"\cf4 \strokec4 , \cf8 \strokec8 "size"\cf4 \strokec4 : \cf9 \strokec9 14\cf4 \strokec4 ,\
+                \cf8 \strokec8 "color"\cf4 \strokec4 : [\cf9 \strokec9 255\cf4 \strokec4 , \cf9 \strokec9 255\cf4 \strokec4 , \cf9 \strokec9 0\cf4 \strokec4 , \cf9 \strokec9 180\cf4 \strokec4 ],\
+                \cf8 \strokec8 "outline"\cf4 \strokec4 : \{\cf8 \strokec8 "color"\cf4 \strokec4 : [\cf9 \strokec9 30\cf4 \strokec4 , \cf9 \strokec9 30\cf4 \strokec4 , \cf9 \strokec9 30\cf4 \strokec4 , \cf9 \strokec9 220\cf4 \strokec4 ], \cf8 \strokec8 "width"\cf4 \strokec4 : \cf9 \strokec9 1\cf4 \strokec4 \}\
+            \}\
+        \},\
+        \{\
+            \cf8 \strokec8 "classMaxValue"\cf4 \strokec4 : \cf9 \strokec9 15\cf4 \strokec4 ,\
+            \cf8 \strokec8 "label"\cf4 \strokec4 : \cf8 \strokec8 "> 10 (High)"\cf4 \strokec4 ,\
+            \cf8 \strokec8 "symbol"\cf4 \strokec4 : \{\
+                \cf8 \strokec8 "type"\cf4 \strokec4 : \cf8 \strokec8 "esriSMS"\cf4 \strokec4 ,\
+                \cf8 \strokec8 "style"\cf4 \strokec4 : \cf8 \strokec8 "esriSMSCircle"\cf4 \strokec4 , \cf8 \strokec8 "size"\cf4 \strokec4 : \cf9 \strokec9 20\cf4 \strokec4 ,\
+                \cf8 \strokec8 "color"\cf4 \strokec4 : [\cf9 \strokec9 255\cf4 \strokec4 , \cf9 \strokec9 140\cf4 \strokec4 , \cf9 \strokec9 0\cf4 \strokec4 , \cf9 \strokec9 180\cf4 \strokec4 ],\
+                \cf8 \strokec8 "outline"\cf4 \strokec4 : \{\cf8 \strokec8 "color"\cf4 \strokec4 : [\cf9 \strokec9 30\cf4 \strokec4 , \cf9 \strokec9 30\cf4 \strokec4 , \cf9 \strokec9 30\cf4 \strokec4 , \cf9 \strokec9 220\cf4 \strokec4 ], \cf8 \strokec8 "width"\cf4 \strokec4 : \cf9 \strokec9 1\cf4 \strokec4 \}\
+            \}\
+        \},\
+        \{\
+            \cf8 \strokec8 "classMaxValue"\cf4 \strokec4 : \cf9 \strokec9 9999\cf4 \strokec4 ,\
+            \cf8 \strokec8 "label"\cf4 \strokec4 : \cf8 \strokec8 "> 15 (Critical)"\cf4 \strokec4 ,\
+            \cf8 \strokec8 "symbol"\cf4 \strokec4 : \{\
+                \cf8 \strokec8 "type"\cf4 \strokec4 : \cf8 \strokec8 "esriSMS"\cf4 \strokec4 ,\
+                \cf8 \strokec8 "style"\cf4 \strokec4 : \cf8 \strokec8 "esriSMSCircle"\cf4 \strokec4 , \cf8 \strokec8 "size"\cf4 \strokec4 : \cf9 \strokec9 26\cf4 \strokec4 ,\
+                \cf8 \strokec8 "color"\cf4 \strokec4 : [\cf9 \strokec9 255\cf4 \strokec4 , \cf9 \strokec9 0\cf4 \strokec4 , \cf9 \strokec9 0\cf4 \strokec4 , \cf9 \strokec9 180\cf4 \strokec4 ],\
+                \cf8 \strokec8 "outline"\cf4 \strokec4 : \{\cf8 \strokec8 "color"\cf4 \strokec4 : [\cf9 \strokec9 30\cf4 \strokec4 , \cf9 \strokec9 30\cf4 \strokec4 , \cf9 \strokec9 30\cf4 \strokec4 , \cf9 \strokec9 220\cf4 \strokec4 ], \cf8 \strokec8 "width"\cf4 \strokec4 : \cf9 \strokec9 1\cf4 \strokec4 \}\
+            \}\
+        \}\
+    ]\
+\}\
+points_popup \cf5 \strokec5 =\cf4 \strokec4  \{\
+    \cf8 \strokec8 "title"\cf4 \strokec4 : \cf8 \strokec8 "\cf5 \strokec5 \{City\}\cf8 \strokec8  \'97 Jan 2026 Forecast"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "content"\cf4 \strokec4 : \cf8 \strokec8 "<b>Hosp. Rate/100k:</b> \cf5 \strokec5 \{HospRate\}\cf8 \strokec8 <br/>"\cf4 \strokec4 \
+               \cf8 \strokec8 "<b>Pred. Cases:</b> \cf5 \strokec5 \{PredCases\}\cf8 \strokec8 <br/>"\cf4 \strokec4 \
+               \cf8 \strokec8 "<hr/>"\cf4 \strokec4 \
+               \cf8 \strokec8 "<b>Protein Instability:</b> \cf5 \strokec5 \{ProtInst\}\cf8 \strokec8 <br/>"\cf4 \strokec4 \
+               \cf8 \strokec8 "<b>Smoking (%):</b> \cf5 \strokec5 \{SmokePct\}\cf8 \strokec8 <br/>"\cf4 \strokec4 \
+               \cf8 \strokec8 "<b>Vaccination (%):</b> \cf5 \strokec5 \{VaxPct\}\cf8 \strokec8 "\cf4 \strokec4 \
+\}\
+points_layer.manager.update_definition(\{\
+    \cf8 \strokec8 "drawingInfo"\cf4 \strokec4 : \{\cf8 \strokec8 "renderer"\cf4 \strokec4 : points_renderer\},\
+    \cf8 \strokec8 "popupInfo"\cf4 \strokec4 : points_popup\
+\})\
+\
+\cf2 \strokec2 # Configure heatmap for rainfall\cf4 \strokec4 \
+heat_renderer \cf5 \strokec5 =\cf4 \strokec4  \{\
+    \cf8 \strokec8 "type"\cf4 \strokec4 : \cf8 \strokec8 "heatmap"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "field"\cf4 \strokec4 : \cf8 \strokec8 "RainMM"\cf4 \strokec4 ,\
+    \cf8 \strokec8 "blurRadius"\cf4 \strokec4 : \cf9 \strokec9 18\cf4 \strokec4 ,\
+    \cf8 \strokec8 "maxPixelIntensity"\cf4 \strokec4 : \cf9 \strokec9 100\cf4 \strokec4 ,\
+    \cf8 \strokec8 "minPixelIntensity"\cf4 \strokec4 : \cf9 \strokec9 0\cf4 \strokec4 \
+\}\
+heat_layer.manager.update_definition(\{\
+    \cf8 \strokec8 "drawingInfo"\cf4 \strokec4 : \{\cf8 \strokec8 "renderer"\cf4 \strokec4 : heat_renderer\}\
+\})\
+\
+\pard\pardeftab720\partightenfactor0
+\cf7 \strokec7 print\cf4 \strokec4 (\cf8 \strokec8 "ArcGIS Feature Layers published:"\cf4 \strokec4 )\
+\pard\pardeftab720\partightenfactor0
+\cf2 \strokec2 # Display the map if running in an interactive environment\cf4 \strokec4 \
+\pard\pardeftab720\partightenfactor0
+\cf5 \strokec5 try\cf4 \strokec4 :\
+    display(webmap)\
+\cf5 \strokec5 except\cf4 \strokec4 :\
+    \cf7 \strokec7 print\cf4 \strokec4 (\cf8 \strokec8 "Map ready. Open in Jupyter environment to view interactive map."\cf4 \strokec4 )\
+\
+}
